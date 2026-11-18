@@ -4,6 +4,7 @@ import './style.css';
 import Phaser from 'phaser';
 import { MapScene } from './game/MapScene';
 import { mountHud } from './ui/hud';
+import { Joystick } from './ui/joystick';
 
 // Render the canvas at device resolution (capped at 2) and scale it back down with CSS.
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -13,6 +14,10 @@ const size = () => ({
   w: Math.max(16, Math.round(host.clientWidth * dpr)),
   h: Math.max(16, Math.round(host.clientHeight * dpr)),
 });
+
+const ui = document.getElementById('ui')!;
+const joystick = new Joystick(ui);
+const hud = mountHud(ui, () => mapScene());
 
 const { w, h } = size();
 const game = new Phaser.Game({
@@ -25,10 +30,18 @@ const game = new Phaser.Game({
   input: { activePointers: 3 },
   disableContextMenu: true,
   scene: [MapScene],
-  callbacks: { preBoot: (g) => g.registry.set('dpr', dpr) },
+  callbacks: {
+    preBoot: (g) => {
+      g.registry.set('dpr', dpr);
+      g.registry.set('joystick', joystick);
+      g.registry.set('onTripChange', (canSkip: boolean) => hud.setSkipVisible(canSkip));
+    },
+  },
 });
 
-const mapScene = () => game.scene.getScene('Map') as MapScene | undefined;
+function mapScene() {
+  return game.scene.getScene('Map') as MapScene | undefined;
+}
 
 let resizeQueued = false;
 const onResize = () => {
@@ -44,9 +57,10 @@ const onResize = () => {
 };
 new ResizeObserver(onResize).observe(host);
 
-mountHud(document.getElementById('ui')!, mapScene);
-
 // Block page-level pinch zoom / double-tap zoom on iOS Safari.
 for (const evt of ['gesturestart', 'gesturechange', 'gestureend']) {
   document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
 }
+
+// Handy for debugging in the browser console during development only.
+if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;

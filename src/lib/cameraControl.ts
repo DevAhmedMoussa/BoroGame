@@ -96,6 +96,16 @@ export class CameraControl {
     this.zoomTo(target, sx, sy);
   }
 
+  /** Ease the view towards centring (x, y); frame-rate independent. */
+  followTowards(x: number, y: number, deltaMs: number) {
+    const cam = this.cam;
+    this.velocity = { x: 0, y: 0 };
+    const k = 1 - Math.pow(1 - 0.12, deltaMs / 16.67);
+    cam.scrollX += (x - cam.width / 2 - cam.scrollX) * k;
+    cam.scrollY += (y - cam.height / 2 - cam.scrollY) * k;
+    this.clampScroll();
+  }
+
   centerOn(x: number, y: number) {
     this.cam.centerOn(x, y);
     this.clampScroll();
