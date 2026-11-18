@@ -92,6 +92,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'wS', x: 0.39, y: 0.8 },
   { id: 'eS', x: 0.52, y: 0.8 },
   { id: 'm1', x: 0.56, y: 0.835 },
+  { id: 'b1', x: 0.71, y: 0.86 },
 ];
 
 /** [from, to, kind] — bridges are the only way across the Nile. */
@@ -120,6 +121,8 @@ export const ROAD_EDGES: Array<[string, string, 'road' | 'highway' | 'bridge']> 
   ['t1', 't2', 'road'],
   ['eMidS', 'eS', 'road'],
   ['eS', 'm1', 'road'],
+  ['m1', 'b1', 'road'],
+  ['b1', 't2', 'road'],
   ['eS', 'wS', 'bridge'],
   ['wS', 'wMid', 'road'],
   ['wMid', 'p1', 'road'],

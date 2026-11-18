@@ -5,12 +5,13 @@ import { findRoute, routeLength, type Point } from '../lib/pathfinding';
 import { buildRoadGraph, type RoadGraph } from '../lib/roads';
 import { loadSave, markVisited } from '../lib/storage';
 import { Walkable } from '../lib/walkable';
-import { AVATAR_PLACEHOLDER, CAR, FLAG, HEART, SPARKLE } from '../sprites/avatarPlaceholder';
+import { KUKU } from '../sprites/kuku';
+import { CAR, FLAG, HEART, SPARKLE } from '../sprites/props';
 import { makePixelTexture } from '../sprites/pixel';
 import type { Joystick } from '../ui/joystick';
 import { MarkerLayer } from '../ui/markers';
 import { openMemory } from '../ui/memoryViewer';
-import { Avatar, SPRITE_SCALE } from './Avatar';
+import { AVATAR_HEIGHT, Avatar, SPRITE_SCALE } from './Avatar';
 import { drawMap } from './drawMap';
 import { WORLD_H, WORLD_W, wx, wy } from './world';
 
@@ -66,7 +67,7 @@ export class MapScene extends Phaser.Scene {
     const places = content.places;
     this.joystick = this.registry.get('joystick');
     this.onTripChange = this.registry.get('onTripChange');
-    for (const s of [AVATAR_PLACEHOLDER, CAR, HEART, SPARKLE, FLAG]) makePixelTexture(this, s);
+    for (const s of [KUKU, CAR, HEART, SPARKLE, FLAG]) makePixelTexture(this, s);
 
     this.graph = buildRoadGraph(places);
     this.walk = new Walkable(this.graph);
@@ -87,7 +88,7 @@ export class MapScene extends Phaser.Scene {
 
     // Avatar starts at Kuku's Home, just beside the dot (inside its radius, so it doesn't trigger)
     const home = places.find((p) => p.id === 'kuku-home') ?? places[0];
-    const start = this.findStandingSpot(wx(home.position.x) - 36, wy(home.position.y) + 8);
+    const start = this.findStandingSpot(wx(home.position.x) - 44, wy(home.position.y) + 8);
     this.avatar = new Avatar(this, start.x, start.y);
     for (const p of places) if (this.distTo(p) < ARRIVAL_RADIUS) this.lockedPlaces.add(p.id);
 
@@ -180,7 +181,7 @@ export class MapScene extends Phaser.Scene {
     }
 
     this.avatar.setMoving(moving);
-    if (this.follow) this.camControl.followTowards(this.avatar.x, this.avatar.y - 20, delta);
+    if (this.follow) this.camControl.followTowards(this.avatar.x, this.avatar.y - AVATAR_HEIGHT / 2, delta);
   }
 
   /** Joystick + WASD / arrows, combined into one -1..1 vector. */
@@ -256,7 +257,7 @@ export class MapScene extends Phaser.Scene {
     this.avatar.setMoving(false);
     this.avatar.faceVector(0, 1);
     if (markVisited(place.id)) this.markers.setVisited(place.id, true);
-    this.sparkle(this.avatar.x, this.avatar.y - 20 * SPRITE_SCALE);
+    this.sparkle(this.avatar.x, this.avatar.y - AVATAR_HEIGHT / 2);
     await this.avatar.celebrate();
     await openMemory(place);
     this.busy = false;
@@ -298,7 +299,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   private snapCameraToAvatar() {
-    this.camControl.centerOn(this.avatar.x, this.avatar.y - 20);
+    this.camControl.centerOn(this.avatar.x, this.avatar.y - AVATAR_HEIGHT / 2);
   }
 
   /** Apply a new canvas size (device px) after the browser window changes. */

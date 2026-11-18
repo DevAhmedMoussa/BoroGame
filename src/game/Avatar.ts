@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
+import { KUKU_CYCLES } from '../sprites/kuku';
 
 export type Facing = 'down' | 'up' | 'left' | 'right';
 
 /** On-map scale for the pixel sprites (integer, so they stay crisp). */
 export const SPRITE_SCALE = 2;
 
-const FRAMES: Record<Facing, [number, number]> = { down: [0, 1], up: [2, 3], left: [4, 5], right: [4, 5] };
+/** Sprite height in world px (32 px art + outline, scaled). */
+export const AVATAR_HEIGHT = 34 * SPRITE_SCALE;
 
 /**
  * The player character on the map: shadow, body sprite and a little car for
@@ -24,9 +26,9 @@ export class Avatar extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
-    this.shadow = scene.add.ellipse(0, 0, 13 * SPRITE_SCALE, 5 * SPRITE_SCALE, 0x2b1d14, 0.28);
-    this.body_ = scene.add.sprite(0, 1, 'avatar-placeholder', 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE);
-    this.car = scene.add.sprite(0, -6, 'car', 0).setScale(SPRITE_SCALE).setVisible(false);
+    this.shadow = scene.add.ellipse(0, 0, 18 * SPRITE_SCALE, 6 * SPRITE_SCALE, 0x2b1d14, 0.28);
+    this.body_ = scene.add.sprite(0, 1, 'kuku', 0).setOrigin(0.5, 1).setScale(SPRITE_SCALE);
+    this.car = scene.add.sprite(0, -10, 'car', 0).setScale(SPRITE_SCALE).setVisible(false);
     this.add([this.shadow, this.body_, this.car]);
     scene.add.existing(this);
     this.addToUpdateList(); // containers don't get preUpdate by default
@@ -49,7 +51,7 @@ export class Avatar extends Phaser.GameObjects.Container {
     this.driving = driving;
     this.car.setVisible(driving);
     this.body_.setVisible(!driving);
-    this.shadow.setSize((driving ? 16 : 13) * SPRITE_SCALE, 5 * SPRITE_SCALE);
+    this.shadow.setSize((driving ? 22 : 18) * SPRITE_SCALE, 6 * SPRITE_SCALE);
     // A tiny "hop in / hop out" pop
     this.scene.tweens.add({ targets: this, scale: { from: 0.8, to: 1 }, duration: 160, ease: 'Back.easeOut' });
   }
@@ -62,7 +64,7 @@ export class Avatar extends Phaser.GameObjects.Container {
   celebrate(): Promise<void> {
     return new Promise((resolve) => {
       const heart = this.scene.add
-        .image(this.x, this.y - 30 * SPRITE_SCALE, 'heart')
+        .image(this.x, this.y - AVATAR_HEIGHT - 6, 'heart')
         .setScale(SPRITE_SCALE)
         .setDepth(20);
       this.scene.tweens.add({
@@ -92,9 +94,9 @@ export class Avatar extends Phaser.GameObjects.Container {
 
   preUpdate(_time: number, delta: number) {
     this.animTime += delta;
-    const [a, b] = FRAMES[this.facing];
-    const step = this.moving ? Math.floor(this.animTime / 150) % 2 : 0;
-    this.body_.setFrame(step ? b : a);
+    const cycle = KUKU_CYCLES[this.facing];
+    const step = this.moving ? Math.floor(this.animTime / 140) % cycle.length : 0;
+    this.body_.setFrame(cycle[step]);
     this.body_.setFlipX(this.facing === 'left');
     // Walk bob / idle breathing, snapped to whole sprite pixels
     const bob = this.moving
@@ -103,7 +105,7 @@ export class Avatar extends Phaser.GameObjects.Container {
         ? 0
         : Math.round((Math.sin(this.animTime / 600) + 1) / 2) * SPRITE_SCALE * 0.5;
     this.body_.y = 1 - Math.round(bob) - this.hop;
-    this.car.y = -6 - (this.moving && this.driving ? Math.round(Math.sin(this.animTime / 60)) : 0);
+    this.car.y = -10 - (this.moving && this.driving ? Math.round(Math.sin(this.animTime / 60)) : 0);
     this.shadow.setScale(this.hop > 0 ? 1 - this.hop / (40 * SPRITE_SCALE) : 1);
   }
 }

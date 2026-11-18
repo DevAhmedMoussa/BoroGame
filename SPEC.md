@@ -12,7 +12,7 @@ Build a mobile-first, pixel-art web game where my best friend Kuku walks her own
 
 - Cartoon + pixel-art look throughout (map, landmarks, avatar, UI frames, fonts).
 - Mobile web app opened from a single link; designed for phones in portrait, but must also work on tablets and desktop browsers.
-- 9 places on a stylized Cairo map, each with a name, a pixel emblem, a photo-count bubble and a tiny thumbnail (like Snapchat's Snap Map memories).
+- 10 places on a stylized Cairo map, each with a name, a pixel emblem, a photo-count bubble and a tiny thumbnail (like Snapchat's Snap Map memories).
 - An avatar that looks like Kuku (fixed face, hair, glasses, skin tone) with basic outfit customization only.
 - Two ways to travel: tap a place to auto-walk, or a circular 360° joystick for free movement.
 - Memory window: horizontal swipeable slider (never photos stacked vertically), written memory below.
@@ -80,7 +80,7 @@ You cannot paint images, so create all pixel art in code: define each sprite as 
 
 ## The map
 
-The map is one large, hand-composed, stylized Cairo (not geographically exact) with the Nile through the middle, the 9 places in their roughly real relative positions, and Sahel as a beach zone at the top reached by a long desert highway.
+The map is one large, hand-composed, stylized Cairo (not geographically exact) with the Nile through the middle, the 10 places in their roughly real relative positions, and Sahel as a beach zone at the top reached by a long desert highway.
 
 **World setup**
 
@@ -108,9 +108,10 @@ The map is one large, hand-composed, stylized Cairo (not geographically exact) w
       [PYRAMIDS]      | |
                       | |                 [TAGAMO3]
                       | | [MAADI]
+                      | |          [BRS]
 ```
 
-**The 9 places**
+**The 10 places**
 
 Positions are normalized (x, y from 0 to 1 across the world, top-left = 0,0). Treat them as a starting point and adjust for composition.
 
@@ -125,6 +126,7 @@ Positions are normalized (x, y from 0 to 1 across the world, top-left = 0,0). Tr
 | `pyramids` | The Pyramids | Giza | 0.20, 0.68 | Three pyramids and the Sphinx, a camel optional |
 | `tagamo3` | Tagamo3 | New Cairo (east) | 0.90, 0.78 | Modern glassy building, palm-lined boulevard, café lights |
 | `maadi` | Maadi | South, east bank of the Nile | 0.54, 0.86 | Big leafy trees over a quiet street, a bicycle and a café umbrella |
+| `brs` | BRS | Between Maadi and Tagamo3 | 0.72, 0.88 | To be decided (ask me what BRS is before drawing it) |
 
 All names, emblems and positions come from `places.json` (see Content data model), so I can rename or move them without touching code. The emblem is a 32×32 or 48×48 sprite drawn on the map at the place, with the name on a small pixel banner under it.
 
@@ -153,7 +155,7 @@ The avatar is a chibi pixel version of Kuku whose face, hair, glasses and skin t
 - **Glasses:** dark, thin rectangular-ish frames, always on.
 - **Skin:** warm light-medium tan.
 - **Face:** big warm smile, dark eyes, red-coral lips.
-- **Proportions:** chibi, head about 40% of body height; sprite around 24×32 or 32×32 px.
+- **Proportions:** chibi, head about 40% of body height; sprite around 24×32 or 32×32 px. Also see `references/kuku-avatar-reference.jpg` (her cute cartoon avatar) for the cute, friendly feel.
 
 **Default outfit (matches the photo):** white ribbed square-neck tank top with a small lace flower on one strap, dainty gold necklace with a small pendant, dark trousers, white sneakers.
 
@@ -183,7 +185,7 @@ She can reach a place in two ways, and the memory window opens only when the ava
 - Tapping a place's emblem, banner or photo bubble sets it as the destination; a pixel flag or pulsing ring marks it.
 - The avatar walks there along roads using a simple waypoint graph (nodes at intersections and bridges, A\* or Dijkstra), never across the Nile except on bridges.
 - The camera smoothly follows the avatar.
-- Long trips (Sahel, Zayed, Pyramids, Tagamo3 from far away): travel at a sped-up pace, or have the avatar hop into a little pixel car or microbus for the drive and hop out on arrival. Cap any trip at about 4–6 seconds so it never feels slow.
+- Long trips (Sahel, Zayed, Pyramids, Tagamo3 from far away): travel at a sped-up pace, or have the avatar hop into a little pink pixel car for the drive and hop out on arrival. Cap any trip at about 4–6 seconds so it never feels slow.
 - A "Skip" button appears during long trips to jump straight to arrival.
 - Tapping a different place mid-walk re-routes.
 
@@ -205,7 +207,7 @@ She can reach a place in two ways, and the memory window opens only when the ava
 
 - One-finger drag pans the map (when not touching the joystick); pinch zooms between about 1× and 4× in integer-friendly steps; desktop uses the mouse wheel.
 - A "recenter" HUD button snaps the camera back to the avatar.
-- Optional mini "places list" button opens a scrollable list of all 9 places as a shortcut for tap-to-travel.
+- Optional mini "places list" button opens a scrollable list of all 10 places as a shortcut for tap-to-travel.
 
 ## Memory viewer
 
@@ -259,7 +261,7 @@ Everything personal lives in `src/content/places.json` plus one photo folder per
 
 - Photos go in `public/photos/<place-id>/`. If `photos` is empty or missing, auto-list every image in that folder (via a build-time script that writes a manifest), sorted by filename.
 - Photo count on the map bubble = number of photos for that place, computed automatically.
-- Pre-fill `places.json` with all 9 places from the map table, placeholder memories ("Memory coming soon") and 2–3 colorful placeholder images per place, so the game works before I add real content.
+- Pre-fill `places.json` with all 10 places from the map table, placeholder memories ("Memory coming soon") and 2–3 colorful placeholder images per place, so the game works before I add real content.
 - Validate the file at build time and print friendly errors (missing photo file, duplicate id, position out of range).
 
 **Photo pipeline (`npm run photos`)**
@@ -279,9 +281,9 @@ Everything personal lives in `src/content/places.json` plus one photo folder per
 4. **Wardrobe (first visit only):** pick an outfit, then "Let's go". Later reachable from the HUD.
 5. **Map:** avatar starts at Kuku's Home; a one-time tip bubble explains "Tap a place or use the joystick".
 6. **Memory viewer:** as specified above.
-7. **Finale (when all 9 places are visited):** a special pixel letter from me, text from `finaleMessage` in `places.json`, with confetti and fireworks over the Nile. Re-openable from the HUD afterwards.
+7. **Finale (when all 10 places are visited):** a special pixel letter from me, text from `finaleMessage` in `places.json`, with confetti and fireworks over the Nile. Re-openable from the HUD afterwards.
 
-**HUD (always on map):** progress "5 / 9 places", wardrobe, places list, recenter, sound on/off. Small pixel icon buttons, top corners, clear of the notch.
+**HUD (always on map):** progress "5 / 10 places", wardrobe, places list, recenter, sound on/off. Small pixel icon buttons, top corners, clear of the notch.
 
 **Devices and responsiveness**
 
@@ -307,17 +309,17 @@ Everything personal lives in `src/content/places.json` plus one photo folder per
 
 Build in six phases, stopping after each one to show me (run the dev server and describe how to view it on my phone over the local network) before continuing.
 
-1. **Skeleton:** Vite + TS + Phaser project, portrait canvas, HTML overlay layer, `places.json` with the 9 places and placeholders, plain colored map with the Nile, roads and place dots, camera pan and pinch-zoom.
+1. **Skeleton:** Vite + TS + Phaser project, portrait canvas, HTML overlay layer, `places.json` with the 10 places and placeholders, plain colored map with the Nile, roads and place dots, camera pan and pinch-zoom.
 2. **Movement:** placeholder avatar, tap-to-travel with road pathfinding, 360° joystick and keyboard, arrival detection, recenter button.
 3. **Memories:** markers with photo bubble and count, memory viewer with swipe slider and written memory, photo pipeline script, visited state.
-4. **Art pass:** full pixel-art map (district zones, filler buildings, trees, Nile animation, felucca, cars), the 9 emblems, Sahel beach zone and desert highway, UI frames and fonts.
+4. **Art pass:** full pixel-art map (district zones, filler buildings, trees, Nile animation, felucca, cars), the 10 emblems, Sahel beach zone and desert highway, UI frames and fonts.
 5. **Avatar:** Kuku's likeness sprite, walk/idle/celebrate animations, layered wardrobe screen, saved outfit.
 6. **Polish and ship:** loading, secret question, title, finale letter, HUD, sound, manifest and icons, performance pass, `DEPLOY.md`, `CONTENT-GUIDE.md`, first deploy.
 
 **Done means**
 
 - [ ] Opens from one HTTPS link on iPhone Safari and Android Chrome, portrait, without zooming or scrolling glitches; also usable on desktop.
-- [ ] All 9 places visible with name, emblem, photo-count bubble and tiny thumbnail; Sahel clearly reads as a faraway beach up north.
+- [ ] All 10 places visible with name, emblem, photo-count bubble and tiny thumbnail; Sahel clearly reads as a faraway beach up north.
 - [ ] Tapping any place walks the avatar there along roads (long trips stay under about 6 s or can be skipped) and opens its memory on arrival.
 - [ ] The joystick moves her in any direction, and walking into a place's radius opens its memory.
 - [ ] Memory window uses a horizontal swipe slider (never stacked photos) with my memory text below.
