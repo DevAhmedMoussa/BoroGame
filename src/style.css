@@ -1,0 +1,185 @@
+:root {
+  --ink: #2b1d14;
+  --paper: #fbf1dc;
+  --paper-shade: #ead7b3;
+  --gold: #f2b544;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --font-title: 'Press Start 2P', monospace;
+  --font-body: 'VT323', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #8a6a48;
+  overscroll-behavior: none;
+  font-family: var(--font-body);
+  color: var(--ink);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#game,
+#markers,
+#ui {
+  position: absolute;
+  inset: 0;
+}
+
+#game {
+  touch-action: none;
+}
+
+#game canvas {
+  display: block;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+#markers,
+#ui {
+  pointer-events: none;
+}
+
+/* ---------- place markers (Phase 1 version) ---------- */
+.marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -22px 0 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  will-change: transform;
+  /* centre the element on its anchor point */
+  translate: -50% 0;
+}
+
+.marker-pin {
+  width: 22px;
+  height: 22px;
+  margin-top: 11px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.marker-name {
+  margin-top: 6px;
+  padding: 4px 6px 3px;
+  font-family: var(--font-title);
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.marker:active .marker-name {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+#markers.far .marker-name {
+  font-size: 7px;
+  padding: 3px 4px 2px;
+}
+
+/* ---------- HUD ---------- */
+.hud {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.hud-right {
+  top: calc(12px + var(--safe-t));
+  right: calc(12px + var(--safe-r));
+}
+
+.px-btn {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-family: var(--font-title);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 0 4px 0 var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.px-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+/* ---------- toast ---------- */
+#toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(24px + var(--safe-b));
+  max-width: calc(100% - 32px);
+  padding: 10px 14px 8px;
+  font-family: var(--font-body);
+  font-size: 20px;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  box-shadow: 0 4px 0 var(--ink);
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #toast {
+    transition: none;
+  }
+}

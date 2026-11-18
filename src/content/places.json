@@ -1,0 +1,224 @@
+{
+  "title": "Kuku's Cairo",
+  "friendName": "Kuku",
+  "introMessage": "Welcome to our Cairo. Every place here is a little piece of us.",
+  "finaleMessage": "You found every single memory. Write your letter to Kuku here.",
+  "secretGateEnabled": true,
+  "secretQuestion": "What is the secret word only we know?",
+  "secretAnswer": "change me",
+  "places": [
+    {
+      "id": "sahel",
+      "name": "Sahel",
+      "area": "North Coast (outside Cairo)",
+      "position": {
+        "x": 0.22,
+        "y": 0.06
+      },
+      "emblem": "sahel",
+      "date": "Every Summer",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Sahel"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        },
+        {
+          "file": "placeholder-03.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "kuku-home",
+      "name": "Kuku's Home",
+      "area": "Heliopolis",
+      "position": {
+        "x": 0.8,
+        "y": 0.34
+      },
+      "emblem": "kuku-home",
+      "date": "Home base",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Kuku's Home"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "korba",
+      "name": "Korba",
+      "area": "Heliopolis",
+      "position": {
+        "x": 0.7,
+        "y": 0.38
+      },
+      "emblem": "korba",
+      "date": "",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Korba"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        },
+        {
+          "file": "placeholder-03.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "zayed",
+      "name": "Zayed",
+      "area": "Sheikh Zayed City",
+      "position": {
+        "x": 0.08,
+        "y": 0.48
+      },
+      "emblem": "zayed",
+      "date": "",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Zayed"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "zamalek",
+      "name": "Zamalek",
+      "area": "Island in the Nile",
+      "position": {
+        "x": 0.46,
+        "y": 0.5
+      },
+      "emblem": "zamalek",
+      "date": "Since 2023",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Zamalek"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        },
+        {
+          "file": "placeholder-03.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "nasr-city",
+      "name": "Nasr City",
+      "area": "East Cairo",
+      "position": {
+        "x": 0.74,
+        "y": 0.55
+      },
+      "emblem": "nasr-city",
+      "date": "",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Nasr City"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "pyramids",
+      "name": "The Pyramids",
+      "area": "Giza",
+      "position": {
+        "x": 0.2,
+        "y": 0.68
+      },
+      "emblem": "pyramids",
+      "date": "",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for The Pyramids"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        },
+        {
+          "file": "placeholder-03.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "tagamo3",
+      "name": "Tagamo3",
+      "area": "New Cairo",
+      "position": {
+        "x": 0.9,
+        "y": 0.78
+      },
+      "emblem": "tagamo3",
+      "date": "",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Tagamo3"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    },
+    {
+      "id": "maadi",
+      "name": "Maadi",
+      "area": "South Cairo, east bank",
+      "position": {
+        "x": 0.54,
+        "y": 0.86
+      },
+      "emblem": "maadi",
+      "date": "",
+      "cover": "placeholder-01.jpg",
+      "photos": [
+        {
+          "file": "placeholder-01.jpg",
+          "caption": "A placeholder for Maadi"
+        },
+        {
+          "file": "placeholder-02.jpg"
+        },
+        {
+          "file": "placeholder-03.jpg"
+        }
+      ],
+      "memory": "Memory coming soon.\n\nReplace this text with the story of this place. Blank lines make new paragraphs, **bold** and *italic* work too."
+    }
+  ]
+}
