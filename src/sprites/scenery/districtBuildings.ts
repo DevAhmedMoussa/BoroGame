@@ -283,6 +283,68 @@ const palace: SpriteDef = {
   },
 };
 
+/** Sleek white-framed glass tower with a stepped crown (Tagamo3 / Zayed). */
+const skyWhite: SpriteDef = {
+  key: 'b-sky-white',
+  w: 26,
+  h: 72,
+  draw(p) {
+    shadow(p, 26, 72);
+    // stepped crown with a spire
+    p.vline(13, 0, 4, PAL.grayDark).px(13, 0, PAL.red);
+    p.rect(9, 4, 8, 4, PAL.white).rect(15, 4, 2, 4, PAL.whiteShade);
+    p.rect(6, 8, 14, 4, PAL.white).rect(18, 8, 2, 4, PAL.whiteShade);
+    p.rect(3, 12, 20, 2, PAL.whiteShade);
+    // glass body with white mullions
+    p.rect(3, 14, 20, 54, PAL.glass);
+    p.rect(19, 14, 4, 54, PAL.glassDark);
+    for (let y = 16; y < 66; y += 5) p.hline(3, y, 16, PAL.white);
+    for (const x of [8, 13]) p.vline(x, 14, 54, '#b9e6f2');
+    p.line(4, 64, 14, 18, PAL.glassLight).line(5, 64, 15, 18, PAL.glassLight);
+    // lobby
+    p.rect(2, 64, 22, 5, PAL.white).rect(9, 65, 8, 4, PAL.windowDark);
+    p.rect(2, 64, 22, 1, PAL.gold);
+  },
+};
+
+/** Dark glass tower with gold trim and a slanted top. */
+const skyGold: SpriteDef = {
+  key: 'b-sky-gold',
+  w: 24,
+  h: 66,
+  draw(p) {
+    shadow(p, 24, 66);
+    p.poly([[3, 10], [21, 4], [21, 10]], '#3b4a60');
+    p.rect(3, 10, 18, 52, '#4a6a8a');
+    p.rect(17, 10, 4, 52, '#34506e');
+    for (let y = 13; y < 60; y += 4) p.hline(3, y, 14, '#6f93b5');
+    for (const x of [3, 20]) p.vline(x, 4, 58, PAL.gold);
+    p.hline(3, 10, 18, PAL.gold);
+    p.line(5, 58, 12, 14, '#9cc2e0');
+    p.rect(2, 58, 20, 5, '#2e2a33').rect(2, 58, 20, 1, PAL.gold).rect(9, 59, 6, 4, PAL.yellow);
+  },
+};
+
+/** Curvy cream residential tower with balconies and rooftop greenery. */
+const skyCurve: SpriteDef = {
+  key: 'b-sky-curve',
+  w: 28,
+  h: 62,
+  draw(p) {
+    shadow(p, 28, 62);
+    p.ellipse(14, 6, 11, 4, PAL.leaf).ellipse(12, 5, 5, 2, PAL.leafLight);
+    p.rect(3, 6, 22, 52, '#f4ead8');
+    p.ellipse(3, 32, 2, 26, '#f4ead8').ellipse(25, 32, 2, 26, '#e2d3b8');
+    p.rect(21, 6, 4, 52, '#e2d3b8');
+    for (let y = 9; y < 56; y += 6) {
+      p.rect(4, y, 18, 3, PAL.glass).rect(4, y, 18, 1, PAL.glassLight);
+      p.rect(2, y + 3, 24, 1, PAL.white);
+      if ((y / 6) % 2 < 1) p.px(6, y + 2, PAL.leaf).px(18, y + 2, PAL.pink);
+    }
+    p.rect(2, 56, 24, 3, PAL.white).rect(11, 56, 6, 3, PAL.windowDark);
+  },
+};
+
 export const DISTRICT_BUILDINGS = {
   french: [
     french('b-french-cream', '#f4e4c6', '#dfc9a2', 3, PAL.green),
@@ -303,6 +365,7 @@ export const DISTRICT_BUILDINGS = {
   church,
   gem,
   palace,
+  skyscrapers: [skyWhite, skyGold, skyCurve],
 };
 
 export const DISTRICT_BUILDING_SPRITES: SpriteDef[] = [
@@ -316,4 +379,7 @@ export const DISTRICT_BUILDING_SPRITES: SpriteDef[] = [
   church,
   gem,
   palace,
+  skyWhite,
+  skyGold,
+  skyCurve,
 ];

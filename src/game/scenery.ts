@@ -39,6 +39,8 @@ export interface Deco {
   /** Ground (feet) y in world px. */
   y: number;
   live?: 'palm';
+  /** Special buildings that are never thinned out. */
+  landmark?: boolean;
 }
 
 type Pick = string | SpriteDef | SpriteDef[];
@@ -48,8 +50,8 @@ const B = BUILDINGS;
 const D = DISTRICT_BUILDINGS;
 const N = NATURE;
 const A = ANIMALS;
-/** Tagamo3 and Zayed: high-end malls, boutiques, bakeries and glam lights. */
-const HIGH_END: Table = [[D.mall, 2.5], [D.boutique, 3], [D.bakeries, 2], [STREET.lights, 2], [B.towers, 1.2], [B.villas, 1.5], [N.palms, 1], [STREET.cafes, 1.5], [N.flowers, 0.6]];
+/** Tagamo3 and Zayed: tall modern towers, malls, boutiques and bakeries. */
+const HIGH_END: Table = [[D.skyscrapers, 3.5], [D.mall, 2], [D.boutique, 2.5], [D.bakeries, 1.5], [B.towers, 1], [B.villas, 1], [N.palms, 1.2], [STREET.cafes, 1.2], [N.flowers, 0.6]];
 /** Each district's own architecture and feel (weights), plus how full it is (density). */
 const TABLES: Record<string, { density: number; table: Table }> = {
   // Heliopolis around Kuku's Home and Korba: antique French-style buildings
@@ -59,7 +61,7 @@ const TABLES: Record<string, { density: number; table: Table }> = {
   'New Cairo': { density: 0.8, table: HIGH_END },
   'Sheikh Zayed': { density: 0.8, table: HIGH_END },
   // Maadi: leafy, bakeries, little villas on narrow streets
-  Maadi: { density: 0.9, table: [[N.trees, 4], [N.bigTree, 2], [D.bakeries, 2.5], [B.villas, 2], [B.apartments, 0.6], [STREET.cafes, 1], [STREET.bench, 0.6], [N.flowers, 0.8]] },
+  Maadi: { density: 0.95, table: [[N.trees, 7], [N.bigTree, 3], [D.bakeries, 2], [B.villas, 1.5], [B.apartments, 0.4], [STREET.cafes, 0.8], [STREET.bench, 0.6], [N.flowers, 0.8]] },
   // BRS: the school's neighbourhood
   BRS: { density: 0.7, table: [[B.villas, 1.5], [D.bakeries, 0.8], [B.kiosk, 1], [STREET.bench, 1], [N.trees, 1], [N.flowers, 1], [STREET.lamp, 0.6]] },
   // Giza: nature and animals, mosques and churches, few buildings
@@ -204,7 +206,7 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
   const near = (id: string, key: string, offsets: Array<[number, number]>) => {
     const p = places.find((q) => q.id === id);
     if (!p) return;
-    for (const [dx, dy] of offsets) if (tryPlace(key, wx(p.position.x) + dx, wy(p.position.y) + dy)) return;
+    for (const [dx, dy] of offsets) if (tryPlace(key, wx(p.position.x) + dx, wy(p.position.y) + dy)) return void (decos[decos.length - 1].landmark = true);
   };
   near('pyramids', D.gem.key, [[270, -10], [-270, 60], [230, 170], [-240, -150], [300, 120], [-300, 180]]);
   near('pyramids', D.church.key, [[-200, -40], [180, -120], [-150, 220]]);
@@ -236,12 +238,14 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
 
   // 3b) Signature buildings first, so each district's character gets the space:
   //     Nasr City crammed with plain blocks, Tagamo3/Zayed high-end, Heliopolis French, Maadi trees & bakeries
+  const highEndPick = () =>
+    weighted(rand, [[D.skyscrapers[0].key, 2], [D.skyscrapers[1].key, 2], [D.skyscrapers[2].key, 2], [D.boutique.key, 1.5], [D.mall.key, 1.2], [D.bakeries[0].key, 0.6], [D.bakeries[1].key, 0.6]] as Array<[string, number]>);
   const signature: Record<string, { step: number; chance: number; pick: () => string }> = {
     'Nasr City': { step: 44, chance: 1, pick: () => D.blocks[Math.floor(rand() * D.blocks.length)].key },
-    'New Cairo': { step: 60, chance: 0.75, pick: () => weighted(rand, [[D.boutique.key, 3], [D.mall.key, 2], [D.bakeries[0].key, 1], [D.bakeries[1].key, 1], [STREET.lights.key, 2]] as Array<[string, number]>) },
-    'Sheikh Zayed': { step: 60, chance: 0.75, pick: () => weighted(rand, [[D.boutique.key, 3], [D.mall.key, 2], [D.bakeries[0].key, 1], [D.bakeries[1].key, 1], [STREET.lights.key, 2]] as Array<[string, number]>) },
+    'New Cairo': { step: 60, chance: 0.75, pick: highEndPick },
+    'Sheikh Zayed': { step: 60, chance: 0.75, pick: highEndPick },
     Heliopolis: { step: 58, chance: 0.8, pick: () => D.french[Math.floor(rand() * D.french.length)].key },
-    Maadi: { step: 48, chance: 0.55, pick: () => (rand() < 0.7 ? N.trees[Math.floor(rand() * 3)].key : D.bakeries[Math.floor(rand() * 2)].key) },
+    Maadi: { step: 36, chance: 0.95, pick: () => (rand() < 0.85 ? (rand() < 0.2 ? N.bigTree.key : N.trees[Math.floor(rand() * 3)].key) : D.bakeries[Math.floor(rand() * 2)].key) },
   };
   for (const [region, sig] of Object.entries(signature)) {
     for (let gy = 0; gy < WORLD_H; gy += sig.step) {
@@ -249,7 +253,7 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
         const x = gx + (rand() - 0.5) * 14;
         const y = gy + (rand() - 0.5) * 14;
         if (regionAt(x, y) !== region || rand() > sig.chance) continue;
-        tryPlace(sig.pick(), x, y);
+        tryPlace(sig.pick(), x, y, { small: region === 'Maadi' });
       }
     }
   }
@@ -278,8 +282,11 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
     tryPlace(key, x, y, { small: true });
   }
 
-  decos.sort((a, b) => a.y - b.y);
-  return decos;
+  // Thin out ordinary buildings by 35% across the whole map (landmarks and the North Coast chalets stay)
+  const BUILDING_THINNING = 0.35;
+  const kept = decos.filter((d) => !d.key.startsWith('b-') || d.landmark || d.key.startsWith('b-chalet') || rand() >= BUILDING_THINNING);
+  kept.sort((a, b) => a.y - b.y);
+  return kept;
 }
 
 function isOnIsland(x: number, y: number) {
