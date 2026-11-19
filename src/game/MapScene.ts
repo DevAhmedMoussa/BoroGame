@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
+import { avatarStyle } from '../config';
 import { content, type Place } from '../content';
 import { CameraControl } from '../lib/cameraControl';
 import { findRoute, routeLength, type Point } from '../lib/pathfinding';
 import { buildRoadGraph, type RoadGraph } from '../lib/roads';
 import { loadSave, markVisited } from '../lib/storage';
 import { Walkable } from '../lib/walkable';
+import type { Avatar3D } from '../three/Avatar3D';
 import { KUKU } from '../sprites/kuku';
 import { CAR, FLAG, HEART, SPARKLE } from '../sprites/props';
 import { makePixelTexture } from '../sprites/pixel';
@@ -45,6 +47,7 @@ export class MapScene extends Phaser.Scene {
   /** Called when a long trip starts/ends so the UI can show or hide "Skip". */
   onTripChange?: (canSkip: boolean) => void;
 
+  private avatar3d?: Avatar3D;
   private walk!: Walkable;
   private trip: Trip | null = null;
   private follow = true;
@@ -91,6 +94,7 @@ export class MapScene extends Phaser.Scene {
     const start = this.findStandingSpot(wx(home.position.x) - 44, wy(home.position.y) + 8);
     this.avatar = new Avatar(this, start.x, start.y);
     for (const p of places) if (this.distTo(p) < ARRIVAL_RADIUS) this.lockedPlaces.add(p.id);
+    if (avatarStyle() === '3d') void this.load3DAvatar();
 
     this.camControl.setZoomAt(START_ZOOM, this.scale.width / 2, this.scale.height / 2);
     this.camControl.centerOn(start.x, start.y);
@@ -314,6 +318,38 @@ export class MapScene extends Phaser.Scene {
 
   private syncOverlay() {
     const cam = this.cameras.main;
-    this.markers.update(cam.worldView.x, cam.worldView.y, cam.zoom / this.dpr, this.camControl.zoom);
+    const scale = cam.zoom / this.dpr;
+    this.markers.update(cam.worldView.x, cam.worldView.y, scale, this.camControl.zoom);
+    if (this.avatar3d) {
+      const a = this.avatar;
+      this.avatar3d.update({
+        sx: (a.x - cam.worldView.x) * scale,
+        sy: (a.y - cam.worldView.y) * scale,
+        zoom: scale,
+        heading: a.heading,
+        moving: a.isMoving,
+        driving: a.isDriving,
+        hop: a.hopHeight,
+        dt: this.game.loop.delta / 1000,
+      });
+    }
+  }
+
+  /** Load the 3D Kuku after the map is up; keep the pixel sprite if 3D can't run here. */
+  private async load3DAvatar() {
+    try {
+      const { Avatar3D } = await import('../three/Avatar3D');
+      const layer = document.getElementById('avatar3d')!;
+      const a3d = new Avatar3D(layer, this.dpr);
+      a3d.canvas.addEventListener('webglcontextlost', () => {
+        a3d.canvas.remove();
+        this.avatar3d = undefined;
+        this.avatar.setUse3D(false);
+      });
+      this.avatar3d = a3d;
+      this.avatar.setUse3D(true);
+    } catch (err) {
+      console.warn('3D avatar unavailable, using the pixel sprite instead.', err);
+    }
   }
 }

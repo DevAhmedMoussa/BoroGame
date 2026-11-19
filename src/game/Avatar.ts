@@ -15,6 +15,10 @@ export const AVATAR_HEIGHT = 34 * SPRITE_SCALE;
  */
 export class Avatar extends Phaser.GameObjects.Container {
   facing: Facing = 'down';
+  /** Facing in radians for the 3D model: 0 = screen-down (towards the camera), clockwise seen from above. */
+  heading = 0;
+  /** True when the 3D model draws her and the pixel sprites are hidden. */
+  private use3D = false;
   private body_: Phaser.GameObjects.Sprite;
   private car: Phaser.GameObjects.Sprite;
   private shadow: Phaser.GameObjects.Ellipse;
@@ -39,6 +43,7 @@ export class Avatar extends Phaser.GameObjects.Container {
   faceVector(dx: number, dy: number) {
     if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return;
     this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+    this.heading = Math.atan2(dx, dy);
     if (this.driving) this.car.setRotation(Math.atan2(dy, dx)).setFlipY(dx < 0);
   }
 
@@ -49,8 +54,8 @@ export class Avatar extends Phaser.GameObjects.Container {
   setDriving(driving: boolean) {
     if (driving === this.driving) return;
     this.driving = driving;
-    this.car.setVisible(driving);
-    this.body_.setVisible(!driving);
+    this.car.setVisible(driving && !this.use3D);
+    this.body_.setVisible(!driving && !this.use3D);
     this.shadow.setSize((driving ? 22 : 18) * SPRITE_SCALE, 6 * SPRITE_SCALE);
     // A tiny "hop in / hop out" pop
     this.scene.tweens.add({ targets: this, scale: { from: 0.8, to: 1 }, duration: 160, ease: 'Back.easeOut' });
@@ -58,6 +63,23 @@ export class Avatar extends Phaser.GameObjects.Container {
 
   get isDriving() {
     return this.driving;
+  }
+
+  get isMoving() {
+    return this.moving;
+  }
+
+  /** Current hop height in world px (arrival celebration). */
+  get hopHeight() {
+    return this.hop;
+  }
+
+  /** Hand drawing over to the 3D model (pixel sprites and shadow hidden) or back. */
+  setUse3D(on: boolean) {
+    this.use3D = on;
+    this.shadow.setVisible(!on);
+    this.body_.setVisible(!on && !this.driving);
+    this.car.setVisible(!on && this.driving);
   }
 
   /** Arrival celebration: a little hop and a floating heart. Resolves when done. */

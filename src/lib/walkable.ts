@@ -2,7 +2,7 @@ import { SAHEL, WORLD_H, WORLD_W, isWater, wy } from '../game/world';
 import type { RoadGraph } from './roads';
 
 const EDGE_MARGIN = 10;
-const BRIDGE_HALF_WIDTH = 18;
+const BRIDGE_HALF_WIDTH = 11;
 
 /** Where the avatar may stand: anywhere on land inside the world, plus on bridges. */
 export class Walkable {
