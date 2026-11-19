@@ -5,7 +5,8 @@ import { preloadPlace } from '../content/media';
 import { CameraControl } from '../lib/cameraControl';
 import { findRoute, routeLength, type Point } from '../lib/pathfinding';
 import { buildRoadGraph, type RoadGraph } from '../lib/roads';
-import { loadSave, markVisited } from '../lib/storage';
+import { normalizeOutfit } from '../lib/outfit';
+import { loadSave, markVisited, updateSave } from '../lib/storage';
 import { Walkable } from '../lib/walkable';
 import type { Avatar3D } from '../three/Avatar3D';
 import { KUKU } from '../sprites/kuku';
@@ -14,6 +15,7 @@ import { makePixelTexture } from '../sprites/pixel';
 import type { Joystick } from '../ui/joystick';
 import { MarkerLayer } from '../ui/markers';
 import { openMemory } from '../ui/memoryViewer';
+import { toast } from '../ui/toast';
 import { AVATAR_HEIGHT, Avatar, SPRITE_SCALE } from './Avatar';
 import { drawGround } from './ground';
 import { MapLife, bakeMap, planScenery, registerTextures } from './scenery';
@@ -189,6 +191,28 @@ export class MapScene extends Phaser.Scene {
     this.markers.setSelected(null);
   }
 
+  /** Open the wardrobe (3D avatar only); the chosen outfit is saved and worn on the map. */
+  async openWardrobe() {
+    if (this.busy) return;
+    if (!this.avatar3d) {
+      toast('The wardrobe needs the 3D Kuku, which this device can’t show');
+      return;
+    }
+    this.busy = true;
+    this.stopTrip();
+    this.releaseControls();
+    this.avatar.setMoving(false);
+    try {
+      const { openWardrobe } = await import('../ui/wardrobe');
+      const outfit = await openWardrobe(normalizeOutfit(loadSave().outfit));
+      updateSave((d) => (d.outfit = outfit));
+      this.avatar3d?.setOutfit(outfit);
+    } finally {
+      this.releaseControls();
+      this.busy = false;
+    }
+  }
+
   /** Pet Zuzu: she hops and wags and bursts into hearts. */
   petZuzu() {
     if (!this.zuzu || !this.nearZuzu) return;
@@ -332,6 +356,10 @@ export class MapScene extends Phaser.Scene {
     this.sparkle(this.avatar.x, this.avatar.y - AVATAR_HEIGHT / 2);
     await this.avatar.celebrate();
     await openMemory(place);
+    // Beach day: suggest the sun hat once she's at Sahel
+    if (place.id === 'sahel' && this.avatar3d && normalizeOutfit(loadSave().outfit).accessory !== 'sunhat') {
+      toast('Beach day! Try the sun hat in the wardrobe', 3800);
+    }
     // Whatever was held when the window opened must not keep her walking after it closes.
     this.releaseControls();
     this.busy = false;

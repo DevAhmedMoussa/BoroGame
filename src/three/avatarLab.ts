@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import { KUKU_GLASSES } from '../config';
+import { normalizeOutfit, type Outfit } from '../lib/outfit';
 import { buildCar } from './carModel';
 import { HIP_Y, buildKuku } from './kukuModel';
 
@@ -30,7 +31,18 @@ const rim = new THREE.DirectionalLight(0xffe0ee, 0.7);
 rim.position.set(2, 2.5, -3);
 scene.add(rim);
 
-const kuku = buildKuku({ glasses: q.get('glasses') !== '0' && KUKU_GLASSES });
+const kuku = buildKuku({
+  glasses: q.get('glasses') !== '0' && KUKU_GLASSES,
+  // e.g. ?top=hoodie&topColor=1&bottom=skirt&shoes=boots&accessory=sunhat
+  outfit: normalizeOutfit({
+    top: q.get('top') ?? undefined,
+    topColor: q.has('topColor') ? Number(q.get('topColor')) : undefined,
+    bottom: q.get('bottom') ?? undefined,
+    bottomColor: q.has('bottomColor') ? Number(q.get('bottomColor')) : undefined,
+    shoes: q.get('shoes') ?? undefined,
+    accessory: q.get('accessory') ?? undefined,
+  } as Partial<Outfit>),
+});
 const holder = new THREE.Group();
 holder.rotation.y = yaw;
 holder.add(kuku.root);

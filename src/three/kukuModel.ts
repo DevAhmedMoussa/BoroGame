@@ -1,22 +1,25 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeometry.js';
+import { DEFAULT_OUTFIT, type Outfit } from '../lib/outfit';
+import { dressKuku } from './clothes';
 
 /**
  * 3D Kuku, built entirely from code (no model files), matched to her own
  * avatar (references/kuku-avatar-fullbody.jpg): slim, about five heads tall,
  * long voluminous dark-brown curls past the shoulders with curly bangs, oval
  * face with almond eyes and eyeliner, soft closed smile.
- * Default outfit: lilac short-sleeve shirt knotted at the waist, light-blue
+ * Default outfit (from her avatar): lilac shirt knotted at the waist, light-blue
  * high-waisted jeans with rolled cuffs, white sneakers.
  *
  * Units: feet at y = 0, about 2.45 units tall, facing +Z (towards the camera).
- * Outfit meshes are kept separate so the Phase 5 wardrobe can recolor/swap them.
+ * Clothes are separate layers (clothes.ts) so the wardrobe can swap them.
  */
 
 export interface KukuOptions {
-  /** Her real-life glasses (off by default to match her avatar). */
+  /** Her real-life glasses. */
   glasses?: boolean;
+  /** What she's wearing (defaults to the outfit from her avatar). */
+  outfit?: Outfit;
 }
 
 export const COLORS = {
@@ -28,12 +31,6 @@ export const COLORS = {
   iris: 0x5a3320,
   liner: 0x24150e,
   brow: 0x3a2318,
-  shirt: 0xc8a4e8,
-  shirtLight: 0xdcc3f2,
-  jeans: 0xa9cbea,
-  jeansLight: 0xc4dcf2,
-  shoes: 0xffffff,
-  soles: 0xe8e4de,
   blush: 0xf5a29c,
   glasses: 0x231a18,
 };
@@ -58,8 +55,8 @@ export interface KukuRig {
   legR: THREE.Group;
   shinL: THREE.Group;
   shinR: THREE.Group;
-  /** Meshes by outfit layer, for the wardrobe. */
-  outfit: { top: THREE.Object3D[]; bottom: THREE.Object3D[]; shoes: THREE.Object3D[]; accessory: THREE.Object3D[] };
+  /** Everything currently worn (removed and rebuilt by dressKuku). */
+  clothes: THREE.Object3D[];
 }
 
 /** Small deterministic RNG so the curls are the same on every load. */
@@ -73,7 +70,7 @@ function rng(seed: number) {
   };
 }
 
-const std = (color: number, roughness = 0.6, extra: THREE.MeshStandardMaterialParameters = {}) =>
+export const std = (color: number, roughness = 0.6, extra: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness, ...extra });
 
 const lerpTable = (table: Array<[number, number]>, x: number) => {
@@ -381,80 +378,44 @@ function buildHair(rand: () => number) {
 
 // ---------------------------------------------------------------- body
 
+/**
+ * Builds Kuku: base body (skin), face, glasses, hair, then dresses her.
+ * Clothing lives in clothes.ts and can be swapped any time with dressKuku().
+ */
 export function buildKuku(opts: KukuOptions = {}): KukuRig {
   const rand = rng(11);
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
-
   const skin = std(COLORS.skin, 0.55);
-  const shirt = std(COLORS.shirt, 0.8);
-  const shirtLight = std(COLORS.shirtLight, 0.8);
-  const jeans = std(COLORS.jeans, 0.85);
-  const jeansLight = std(COLORS.jeansLight, 0.85);
   const lathe = (pts: Array<[number, number]>) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 32);
 
-  // --- Shirt (cropped, knotted at the waist)
+  // Torso and pelvis (skin; clothes sit just outside these)
   const torso = new THREE.Mesh(
     lathe([
-      [0.001, 1.25],
-      [0.165, 1.25],
-      [0.172, 1.36],
-      [0.182, 1.5],
-      [0.198, 1.62],
-      [0.214, 1.71],
-      [0.19, 1.78],
-      [0.09, 1.82],
+      [0.001, 1.0],
+      [0.18, 1.0],
+      [0.195, 1.12],
+      [0.16, 1.24],
+      [0.162, 1.36],
+      [0.172, 1.5],
+      [0.188, 1.62],
+      [0.204, 1.71],
+      [0.18, 1.78],
+      [0.085, 1.82],
       [0.001, 1.83],
     ]),
-    shirt,
+    skin,
   );
   torso.scale.z = 0.72;
-  const placket = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.46, 0.008), shirtLight);
-  placket.position.set(0, 1.53, 0.133);
-  placket.rotation.x = -0.05;
-  const buttons: THREE.Mesh[] = [];
-  for (let i = 0; i < 4; i++) {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.009, 8, 6), std(0xffffff, 0.3));
-    b.position.set(0, 1.38 + i * 0.1, 0.139);
-    buttons.push(b);
-  }
-  const collar: THREE.Mesh[] = [];
-  for (const side of [-1, 1]) {
-    const c = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.012, 0.075, 2, 0.005), shirtLight);
-    c.position.set(side * 0.055, 1.79, 0.075);
-    c.rotation.set(0.5, side * 0.5, side * -0.35);
-    collar.push(c);
-  }
-  // The knot at the front of the waist, with two little tails
-  const knot: THREE.Mesh[] = [];
-  const knotCore = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), shirt);
-  knotCore.scale.set(0.05, 0.04, 0.035);
-  knotCore.position.set(0, 1.27, 0.12);
-  knot.push(knotCore);
-  for (const side of [-1, 1]) {
-    const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.026, 0.07, 4, 8), shirt);
-    tail.position.set(side * 0.045, 1.21, 0.125);
-    tail.rotation.z = side * 0.5;
-    tail.scale.z = 0.6;
-    knot.push(tail);
-  }
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.062, 0.2, 16), skin);
   neck.position.y = 1.86;
-  body.add(torso, placket, ...buttons, ...collar, ...knot, neck);
+  body.add(torso, neck);
 
-  // --- Arms with short puffed sleeves (shoulder + elbow pivots)
-  const sleeves: THREE.Mesh[] = [];
+  // Arms (shoulder + elbow pivots)
   const makeArm = (side: number) => {
     const shoulder = new THREE.Group();
     shoulder.position.set(side * 0.215, 1.72, 0);
-    const sleeve = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), shirt);
-    sleeve.scale.set(0.075, 0.11, 0.075);
-    sleeve.position.y = -0.07;
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.064, 0.016, 8, 20), shirtLight);
-    cuff.rotation.x = Math.PI / 2;
-    cuff.position.y = -0.165;
-    sleeves.push(sleeve, cuff);
     const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.043, 0.22, 6, 10), skin);
     upper.position.y = -0.17;
     const elbow = new THREE.Group();
@@ -465,62 +426,35 @@ export function buildKuku(opts: KukuOptions = {}): KukuRig {
     hand.scale.set(0.042, 0.058, 0.028);
     hand.position.y = -0.29;
     elbow.add(fore, hand);
-    shoulder.add(upper, sleeve, cuff, elbow);
+    shoulder.add(upper, elbow);
     body.add(shoulder);
     return { shoulder, elbow };
   };
   const right = makeArm(-1);
   const left = makeArm(1);
 
-  // --- High-waisted light jeans, straight wide legs with rolled cuffs (hip + knee pivots)
-  const waist = new THREE.Mesh(
-    lathe([
-      [0.168, 1.33],
-      [0.178, 1.24],
-      [0.198, 1.14],
-      [0.205, 1.06],
-      [0.19, 1.0],
-      [0.001, 0.98],
-    ]),
-    jeans,
-  );
-  waist.scale.z = 0.76;
-  const waistband = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.012, 6, 32), jeansLight);
-  waistband.rotation.x = Math.PI / 2;
-  waistband.scale.y = 0.76;
-  waistband.position.y = 1.32;
-  body.add(waist, waistband);
-  const shoeMat = std(COLORS.shoes, 0.45);
-  const soleMat = std(COLORS.soles, 0.6);
-  const legParts: THREE.Object3D[] = [waist, waistband];
-  const shoeParts: THREE.Object3D[] = [];
+  // Legs (hip + knee pivots) with bare feet underneath the shoes
   const makeLeg = (side: number) => {
     const hip = new THREE.Group();
     hip.position.set(side * 0.1, HIP_Y, 0);
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.098, 0.09, 0.5, 16), jeans);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.38, 6, 12), skin);
     thigh.position.y = -0.25;
     const knee = new THREE.Group();
     knee.position.y = -0.5;
-    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), jeans);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.4, 16), jeans);
-    shin.position.y = -0.2;
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.106, 0.106, 0.05, 16), jeansLight);
-    cuff.position.y = -0.39;
-    const shoe = new THREE.Mesh(new RoundedBoxGeometry(0.13, 0.1, 0.26, 3, 0.045), shoeMat);
-    shoe.position.set(0, -0.53, 0.045);
-    const sole = new THREE.Mesh(new RoundedBoxGeometry(0.135, 0.03, 0.265, 2, 0.012), soleMat);
-    sole.position.set(0, -0.565, 0.045);
-    knee.add(kneeCap, shin, cuff, shoe, sole);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.058, 0.36, 6, 12), skin);
+    shin.position.y = -0.21;
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), skin);
+    foot.scale.set(0.05, 0.035, 0.11);
+    foot.position.set(0, -0.53, 0.05);
+    knee.add(shin, foot);
     hip.add(thigh, knee);
     body.add(hip);
-    legParts.push(thigh, kneeCap, shin, cuff);
-    shoeParts.push(shoe, sole);
     return { hip, knee };
   };
   const rightLeg = makeLeg(-1);
   const leftLeg = makeLeg(1);
 
-  // --- Head
+  // Head
   const head = new THREE.Group();
   head.position.y = HEAD_Y;
   head.add(new THREE.Mesh(headGeometry(), skin));
@@ -529,7 +463,7 @@ export function buildKuku(opts: KukuOptions = {}): KukuRig {
   head.add(hair);
   body.add(head);
 
-  return {
+  const rig: KukuRig = {
     root,
     body,
     head,
@@ -543,11 +477,8 @@ export function buildKuku(opts: KukuOptions = {}): KukuRig {
     legR: rightLeg.hip,
     shinL: leftLeg.knee,
     shinR: rightLeg.knee,
-    outfit: {
-      top: [torso, placket, ...buttons, ...collar, ...knot, ...sleeves],
-      bottom: legParts,
-      shoes: shoeParts,
-      accessory: [],
-    },
+    clothes: [],
   };
+  dressKuku(rig, opts.outfit ?? DEFAULT_OUTFIT);
+  return rig;
 }

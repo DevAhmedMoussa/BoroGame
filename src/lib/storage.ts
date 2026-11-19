@@ -1,7 +1,9 @@
+import type { Outfit } from './outfit';
+
 /** Everything the game remembers between visits, in one localStorage entry. */
 export interface SaveData {
   visited: string[];
-  outfit?: Record<string, string>;
+  outfit?: Partial<Outfit>;
   settings: { sound: boolean };
   seenTip?: boolean;
 }

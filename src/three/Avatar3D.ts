@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { buildCar, type CarRig } from './carModel';
 import { KUKU_GLASSES } from '../config';
+import { loadSave } from '../lib/storage';
+import { normalizeOutfit, type Outfit } from '../lib/outfit';
+import { dressKuku } from './clothes';
 import { HIP_Y, buildKuku, type KukuRig } from './kukuModel';
 
 /**
@@ -89,7 +92,7 @@ export class Avatar3D {
     this.shadow.renderOrder = -1;
     this.scene.add(this.shadow);
 
-    this.kuku = buildKuku({ glasses: KUKU_GLASSES });
+    this.kuku = buildKuku({ glasses: KUKU_GLASSES, outfit: normalizeOutfit(loadSave().outfit) });
     this.car = buildCar();
     this.car.root.visible = false;
     this.character.add(this.kuku.root, this.car.root);
@@ -107,6 +110,11 @@ export class Avatar3D {
     this.time += dt;
     this.animate(s, dt);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Change what Kuku is wearing on the map. */
+  setOutfit(outfit: Outfit) {
+    dressKuku(this.kuku, outfit);
   }
 
   dispose() {
