@@ -12,8 +12,8 @@ import { HIP_Y, buildKuku, type KukuRig } from './kukuModel';
  * Movement logic stays in Phaser; this only draws.
  */
 
-/** World px per 3D unit: Kuku is ~2.5 units, so ~85 world px tall. */
-export const PX_PER_UNIT = 34;
+/** World px per 3D unit: chibi Kuku is ~2.3 units, so ~92 world px tall. */
+export const PX_PER_UNIT = 40;
 /** Camera elevation (3/4 top-down view). */
 const ELEVATION = THREE.MathUtils.degToRad(20);
 /** Visible area around her, in 3D units on the view plane. */
@@ -250,7 +250,7 @@ export class Avatar3D {
     if (t > this.nextBlink) {
       const b = (t - this.nextBlink) / 0.14;
       const open = b < 1 ? Math.abs(b * 2 - 1) : 1;
-      for (const eye of k.eyes) eye.scale.y = Math.max(0.1, open);
+      k.setEyesClosed(open < 0.5);
       if (b >= 1) this.nextBlink = t + 2.5 + Math.random() * 3;
     }
   }

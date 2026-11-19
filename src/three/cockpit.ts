@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import './cockpit.css';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { colorOf, normalizeOutfit } from '../lib/outfit';
-import { loadSave } from '../lib/storage';
 import { EMBLEMS } from '../sprites/emblems';
 import { renderSprite } from '../sprites/painter';
 
@@ -35,7 +33,6 @@ export function rideTheme(placeId?: string): RideTheme {
 
 const PINK = 0xff86bf;
 const CREAM = 0xfff1e6;
-const SKIN = 0xefbf98;
 const TAU = Math.PI * 2;
 
 const std = (color: number, roughness = 0.7, extra: THREE.MeshStandardMaterialParameters = {}) =>
@@ -244,7 +241,7 @@ function pickKind(theme: RideTheme, near: number /* 0..1 progress of the ride */
 
 // ---------------------------------------------------------------- the cockpit
 
-function buildCockpit(topColor: number) {
+function buildCockpit() {
   const g = new THREE.Group();
   const paint = new THREE.MeshPhysicalMaterial({ color: PINK, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.1 });
   const cream = std(CREAM, 0.6);
@@ -324,7 +321,7 @@ function buildCockpit(topColor: number) {
   charm.add(string, heart);
   g.add(mirror, charm);
 
-  // steering wheel with Kuku's hands (they turn with the wheel)
+  // steering wheel
   const wheel = new THREE.Group();
   wheel.position.set(0, 1.02, -0.76);
   wheel.rotation.x = -0.55;
@@ -340,24 +337,6 @@ function buildCockpit(topColor: number) {
     spoke.geometry.translate(0.08, 0, 0);
     spoke.rotation.z = a - Math.PI / 2;
     wheel.add(spoke);
-  }
-  const skin = std(SKIN, 0.55);
-  const sleeve = std(topColor, 0.8);
-  for (const side of [-1, 1]) {
-    const a = side < 0 ? Math.PI * 0.8 : Math.PI * 0.2; // ten-to-two
-    const hx = Math.cos(a) * 0.17;
-    const hy = Math.sin(a) * 0.17;
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), skin);
-    hand.scale.set(0.034, 0.042, 0.03);
-    hand.position.set(hx, hy, 0.02);
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.42, 6, 10), skin);
-    arm.position.set(hx + side * 0.05, hy - 0.1, 0.25);
-    arm.rotation.x = 1.25;
-    arm.rotation.z = side * -0.25;
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.07, 12), sleeve);
-    cuff.position.set(hx + side * 0.08, hy - 0.19, 0.46);
-    cuff.rotation.x = 1.25;
-    wheel.add(hand, arm, cuff);
   }
   g.add(wheel);
   return { group: g, wheel, needle, charm };
@@ -624,8 +603,7 @@ export function playRide(opts: RideOptions): Promise<void> {
     dest.add(board);
 
     // ---------- cockpit
-    const topColor = colorOf('top', normalizeOutfit(loadSave().outfit));
-    const cockpit = buildCockpit(topColor);
+    const cockpit = buildCockpit();
     scene.add(cockpit.group);
 
     // ---------- resize

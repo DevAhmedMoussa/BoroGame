@@ -63,13 +63,13 @@ export function openWardrobe(initial: Outfit): Promise<Outfit> {
 
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
     const el = THREE.MathUtils.degToRad(8);
-    camera.position.set(0, 1.28 + Math.sin(el) * 30, Math.cos(el) * 30);
-    camera.lookAt(0, 1.28, 0);
+    camera.position.set(0, 1.2 + Math.sin(el) * 30, Math.cos(el) * 30);
+    camera.lookAt(0, 1.2, 0);
     const resize = () => {
       const w = Math.max(1, stage.clientWidth);
       const h = Math.max(1, stage.clientHeight);
       renderer.setSize(w, h, false);
-      const half = 1.42;
+      const half = 1.34;
       const aspect = w / h;
       camera.left = -half * aspect;
       camera.right = half * aspect;

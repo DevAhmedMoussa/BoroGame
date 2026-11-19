@@ -72,8 +72,9 @@ if (pose === 'idle') {
 }
 
 const aspect = innerWidth / innerHeight;
-const half = view === 'face' ? 0.42 : pose === 'car' ? 1.9 : 1.45;
-const centerY = view === 'face' ? 2.12 : pose === 'car' ? 1.0 : 1.25;
+const half = view === 'face' ? 0.7 : pose === 'car' ? 1.9 : 1.35;
+const centerY = view === 'face' ? 1.68 : pose === 'car' ? 1.0 : 1.18;
+if (q.get('blink') === '1') kuku.setEyesClosed(true);
 const camera = new THREE.OrthographicCamera(-half * aspect, half * aspect, half, -half, 0.1, 100);
 const el = THREE.MathUtils.degToRad(view === 'face' ? 5 : 15);
 camera.position.set(0, centerY + Math.sin(el) * 30, Math.cos(el) * 30);
