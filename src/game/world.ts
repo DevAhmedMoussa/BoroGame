@@ -51,6 +51,7 @@ export const DISTRICTS: District[] = [
   { name: 'Giza', x: 0.22, y: 0.68, rx: 0.14, ry: 0.08, color: 0xf0d58f },
   { name: 'Downtown', x: 0.6, y: 0.47, rx: 0.08, ry: 0.06, color: 0xf3dcc0 },
   { name: 'Mohandessin', x: 0.33, y: 0.5, rx: 0.08, ry: 0.07, color: 0xe9d9b4 },
+  { name: 'BRS', x: 0.72, y: 0.885, rx: 0.06, ry: 0.032, color: 0xf6e7a8 },
 ];
 
 /** Green parks (normalized ellipses), drawn as grass with flowers and trees. */
@@ -63,6 +64,19 @@ export const PARKS: Array<{ x: number; y: number; rx: number; ry: number }> = [
   { x: 0.32, y: 0.44, rx: 0.03, ry: 0.016 }, // Mohandessin square
   { x: 0.36, y: 0.75, rx: 0.035, ry: 0.02 }, // Giza gardens
 ];
+
+/** Maadi's narrow little streets (decorative lanes, not part of the walking graph). Normalized [x1, y1, x2, y2]. */
+export const MAADI_LANES: Array<[number, number, number, number]> = [
+  [0.5, 0.848, 0.67, 0.848],
+  [0.505, 0.878, 0.67, 0.878],
+  [0.51, 0.908, 0.665, 0.908],
+  [0.525, 0.83, 0.525, 0.93],
+  [0.585, 0.83, 0.585, 0.93],
+  [0.63, 0.835, 0.63, 0.925],
+];
+
+/** Where Zuzu the dog lives: offset from Kuku's Home, in world px. */
+export const ZUZU_OFFSET = { dx: 105, dy: 48 };
 
 export interface RoadNode {
   id: string;

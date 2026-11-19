@@ -6,10 +6,12 @@ import type { RoadGraph } from '../lib/roads';
 import { ALL_SPRITES } from '../sprites/catalog';
 import { EMBLEMS } from '../sprites/emblems';
 import { renderSprite, type SpriteDef } from '../sprites/painter';
+import { ANIMALS } from '../sprites/scenery/animals';
 import { BUILDINGS } from '../sprites/scenery/buildings';
+import { DISTRICT_BUILDINGS } from '../sprites/scenery/districtBuildings';
 import { NATURE } from '../sprites/scenery/nature';
 import { LIFE, STREET, VEHICLES } from '../sprites/scenery/street';
-import { DISTRICTS, ISLAND, PARKS, SAHEL, WORLD_H, WORLD_W, isWater, nileAt, wx, wy } from './world';
+import { DISTRICTS, ISLAND, MAADI_LANES, PARKS, SAHEL, WORLD_H, WORLD_W, ZUZU_OFFSET, isWater, nileAt, wx, wy } from './world';
 
 /** World px per art px: every sprite pixel is drawn as a 2×2 block. */
 export const ART = 2;
@@ -43,20 +45,31 @@ type Pick = string | SpriteDef | SpriteDef[];
 type Table = Array<[Pick, number]>;
 
 const B = BUILDINGS;
+const D = DISTRICT_BUILDINGS;
 const N = NATURE;
+const A = ANIMALS;
+/** Tagamo3 and Zayed: high-end malls, boutiques, bakeries and glam lights. */
+const HIGH_END: Table = [[D.mall, 2.5], [D.boutique, 3], [D.bakeries, 2], [STREET.lights, 2], [B.towers, 1.2], [B.villas, 1.5], [N.palms, 1], [STREET.cafes, 1.5], [N.flowers, 0.6]];
+/** Each district's own architecture and feel (weights), plus how full it is (density). */
 const TABLES: Record<string, { density: number; table: Table }> = {
-  Heliopolis: { density: 0.8, table: [[B.arcades, 3], [B.apartments, 3], [B.villas, 1], [B.mosque, 0.3], [N.trees, 3], [N.palms, 1], [STREET.cafes, 0.5], [N.bush, 1], [N.flowers, 0.6]] },
-  'Nasr City': { density: 0.8, table: [[B.apartments, 5], [B.towers, 1.5], [B.shops, 2], [B.mosque, 0.4], [N.trees, 2], [N.bush, 1], [STREET.lamp, 0.4]] },
-  'New Cairo': { density: 0.75, table: [[B.towers, 3], [B.villas, 3], [N.palms, 3], [B.shops, 1], [STREET.cafes, 0.7], [N.flowers, 1], [N.bush, 1]] },
-  Maadi: { density: 0.8, table: [[B.villas, 3], [B.apartments, 1], [N.bigTree, 2], [N.trees, 4], [STREET.cafes, 1], [STREET.bench, 0.5], [N.flowers, 1], [N.bush, 1]] },
-  'Sheikh Zayed': { density: 0.75, table: [[B.villas, 4], [N.palms, 4], [B.shops, 0.8], [STREET.cafes, 0.5], [N.flowers, 1], [N.bush, 1]] },
-  Giza: { density: 0.6, table: [[B.apartments, 2], [B.shops, 0.7], [N.palms, 1.5], [N.rock, 1], [N.shrub, 1], [B.mosque, 0.3], [B.kiosk, 0.4]] },
-  Downtown: { density: 0.9, table: [[B.apartments, 5], [B.shops, 2], [B.mosque, 0.6], [B.arcades, 1], [N.trees, 1], [STREET.lamp, 0.6], [B.kiosk, 0.5]] },
-  Mohandessin: { density: 0.85, table: [[B.apartments, 4], [B.shops, 2], [N.trees, 2], [B.kiosk, 0.5], [B.mosque, 0.3]] },
-  island: { density: 0.85, table: [[B.villas, 2], [B.apartments, 2], [N.trees, 4], [N.palms, 1], [STREET.cafes, 0.5]] },
-  park: { density: 0.7, table: [[N.trees, 4], [N.bigTree, 1], [N.bush, 2], [N.flowers, 3], [STREET.bench, 1], [STREET.lamp, 0.5], [N.palms, 1]] },
-  generic: { density: 0.5, table: [[B.apartments, 2.5], [N.trees, 2], [N.bush, 2], [N.palms, 1], [N.shrub, 1], [N.rock, 0.5], [B.kiosk, 0.2]] },
-  desert: { density: 0.22, table: [[N.dune, 3], [N.rock, 2], [N.shrub, 3]] },
+  // Heliopolis around Kuku's Home and Korba: antique French-style buildings
+  Heliopolis: { density: 0.85, table: [[D.french, 7], [D.frenchDome, 1.5], [B.arcades, 1.2], [STREET.cafes, 1], [STREET.lamp, 1], [B.mosque, 0.2], [N.trees, 0.8], [N.flowers, 0.6], [N.bush, 0.4]] },
+  // Nasr City: packed, plain concrete blocks (an extra dense pass adds more)
+  'Nasr City': { density: 0.95, table: [[D.blocks, 7], [B.apartments, 1.5], [B.shops, 1.5], [B.kiosk, 0.6], [B.mosque, 0.4]] },
+  'New Cairo': { density: 0.8, table: HIGH_END },
+  'Sheikh Zayed': { density: 0.8, table: HIGH_END },
+  // Maadi: leafy, bakeries, little villas on narrow streets
+  Maadi: { density: 0.9, table: [[N.trees, 4], [N.bigTree, 2], [D.bakeries, 2.5], [B.villas, 2], [B.apartments, 0.6], [STREET.cafes, 1], [STREET.bench, 0.6], [N.flowers, 0.8]] },
+  // BRS: the school's neighbourhood
+  BRS: { density: 0.7, table: [[B.villas, 1.5], [D.bakeries, 0.8], [B.kiosk, 1], [STREET.bench, 1], [N.trees, 1], [N.flowers, 1], [STREET.lamp, 0.6]] },
+  // Giza: nature and animals, mosques and churches, few buildings
+  Giza: { density: 0.6, table: [[N.palms, 3], [A.cactus, 2.5], [N.camel, 1.2], [A.horse, 1.2], [A.goat, 1], [B.mosque, 0.5], [D.church, 0.5], [N.rock, 1], [N.shrub, 1.2], [B.apartments, 0.3]] },
+  Downtown: { density: 0.9, table: [[B.apartments, 3], [D.french, 2], [B.shops, 2], [B.mosque, 0.6], [D.church, 0.3], [B.arcades, 1], [STREET.lamp, 0.6], [B.kiosk, 0.5]] },
+  Mohandessin: { density: 0.85, table: [[B.apartments, 4], [B.shops, 2], [N.trees, 0.8], [B.kiosk, 0.5], [B.mosque, 0.3]] },
+  island: { density: 0.85, table: [[B.villas, 2], [D.french, 1.2], [B.apartments, 1], [N.trees, 2.5], [N.palms, 1], [STREET.cafes, 0.6]] },
+  park: { density: 0.6, table: [[N.trees, 2.5], [N.bigTree, 0.7], [N.bush, 1.5], [N.flowers, 3], [STREET.bench, 1.2], [STREET.lamp, 0.6], [N.palms, 0.8]] },
+  generic: { density: 0.45, table: [[B.apartments, 2.5], [D.blocks, 1], [N.trees, 0.7], [N.bush, 1], [N.palms, 0.6], [N.shrub, 1], [N.rock, 0.5], [B.kiosk, 0.3]] },
+  desert: { density: 0.22, table: [[N.dune, 3], [N.rock, 2], [N.shrub, 3], [A.cactus, 0.6]] },
   desertBand: { density: 0.3, table: [[N.dune, 3], [N.rock, 2], [N.shrub, 3]] },
 };
 
@@ -91,7 +104,10 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
     const b = graph.nodes.get(e.b)!;
     return { ax: a.x, ay: a.y, bx: b.x, by: b.y, half: e.kind === 'highway' ? 21 : e.kind === 'spur' ? 15 : 18 };
   });
+  for (const [x1, y1, x2, y2] of MAADI_LANES) roads.push({ ax: wx(x1), ay: wy(y1), bx: wx(x2), by: wy(y2), half: 9 });
   const placePts = places.map((p) => ({ x: wx(p.position.x), y: wy(p.position.y) }));
+  const home = places.find((p) => p.id === 'kuku-home');
+  const zuzu = home ? { x: wx(home.position.x) + ZUZU_OFFSET.dx, y: wy(home.position.y) + ZUZU_OFFSET.dy } : null;
 
   // Occupancy: spatial hash of placed boxes
   const CELL = 64;
@@ -132,6 +148,7 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
       if (sy > wy(0.19) && Math.abs(sx / WORLD_W - cx) < half + 0.006 && !isOnIsland(sx, sy)) return false;
       for (const r of roads) if (distToSegment(sx, sy, r.ax, r.ay, r.bx, r.by) < r.half + 3) return false;
     }
+    if (zuzu && Math.abs(x - zuzu.x) < 46 + hw && y > zuzu.y - 40 && y - h < zuzu.y + 30) return false;
     for (const p of placePts) {
       const dx = (x - p.x) / (72 + hw);
       const dy = (y - h * 0.4 - (p.y - 10)) / (60 + h * 0.4);
@@ -158,7 +175,7 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
     }
   }
 
-  // 2) Trees, palms and lamps lining the streets
+  // 2) Street furniture lining the roads (sparser than before; style depends on the district)
   for (const e of graph.edges) {
     if (e.kind !== 'road') continue;
     const a = graph.nodes.get(e.a)!;
@@ -166,26 +183,76 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     const ux = (b.x - a.x) / len;
     const uy = (b.y - a.y) / len;
-    for (let s = 40; s < len - 40; s += 58) {
+    for (let d = 50; d < len - 50; d += 84) {
       for (const side of [-1, 1]) {
-        if (rand() < 0.3) continue;
-        const x = a.x + ux * s - uy * 30 * side;
-        const y = a.y + uy * s + ux * 30 * side + 8;
+        const x = a.x + ux * d - uy * 30 * side;
+        const y = a.y + uy * d + ux * 30 * side + 8;
         const region = regionAt(x, y);
-        const key =
-          region === 'New Cairo' || region === 'Sheikh Zayed' || region === 'Giza'
-            ? N.palms[Math.floor(rand() * 2)].key
-            : rand() < 0.22
-              ? STREET.lamp.key
-              : N.trees[Math.floor(rand() * 3)].key;
+        const leafy = region === 'Maadi' || region === 'park';
+        if (rand() < (leafy ? 0.25 : 0.6)) continue;
+        let key: string;
+        if (leafy) key = N.trees[Math.floor(rand() * 3)].key;
+        else if (region === 'New Cairo' || region === 'Sheikh Zayed' || region === 'Giza') key = rand() < 0.6 ? N.palms[Math.floor(rand() * 2)].key : STREET.lamp.key;
+        else if (region === 'Heliopolis') key = rand() < 0.75 ? STREET.lamp.key : N.trees[0].key;
+        else key = rand() < 0.55 ? STREET.lamp.key : N.trees[Math.floor(rand() * 3)].key;
         tryPlace(key, x, y);
       }
+    }
+  }
+
+  // Landmarks that give districts their identity (placed before the fill so they get room)
+  const near = (id: string, key: string, offsets: Array<[number, number]>) => {
+    const p = places.find((q) => q.id === id);
+    if (!p) return;
+    for (const [dx, dy] of offsets) if (tryPlace(key, wx(p.position.x) + dx, wy(p.position.y) + dy)) return;
+  };
+  near('pyramids', D.gem.key, [[270, -10], [-270, 60], [230, 170], [-240, -150], [300, 120], [-300, 180]]);
+  near('pyramids', D.church.key, [[-200, -40], [180, -120], [-150, 220]]);
+  near('pyramids', B.mosque.key, [[150, -150], [-120, -200], [220, 240]]);
+  near('brs', D.school.key, [[-180, 6], [180, 6], [0, 150], [-160, 130], [170, 130]]);
+  near('kuku-home', D.frenchDome.key, [[-150, -40], [150, -60], [-120, 120]]);
+  near('korba', D.frenchDome.key, [[130, 110], [-140, 100], [0, 150]]);
+  {
+    const ix = wx(ISLAND.x);
+    const iy = wy(ISLAND.y);
+    const spots: Array<[number, number]> = [[-38, -150], [38, -150], [-38, 200], [38, 200], [-40, -120]];
+    for (const [dx, dy] of spots) if (tryPlace(D.palace.key, ix + dx, iy + dy)) break;
+  }
+  const pyrP = places.find((p) => p.id === 'pyramids');
+  if (pyrP) {
+    const px = wx(pyrP.position.x);
+    const py = wy(pyrP.position.y);
+    const herd: Array<[string, number]> = [[N.camel.key, 3], [A.horse.key, 2.5], [A.goat.key, 2], [A.cactus.key, 2], [N.palms[0].key, 1.5]];
+    for (let i = 0; i < 18; i++) {
+      const ang = rand() * Math.PI * 2;
+      const r = 120 + rand() * 170;
+      tryPlace(weighted(rand, herd), px + Math.cos(ang) * r * 1.2, py + Math.sin(ang) * r * 0.8 + 30);
     }
   }
 
   // 3) Camels near the pyramids
   const pyr = places.find((p) => p.id === 'pyramids');
   if (pyr) for (const [dx, dy] of [[-150, 60], [140, 70], [-70, 130], [60, 150]]) tryPlace(N.camel.key, wx(pyr.position.x) + dx, wy(pyr.position.y) + dy);
+
+  // 3b) Signature buildings first, so each district's character gets the space:
+  //     Nasr City crammed with plain blocks, Tagamo3/Zayed high-end, Heliopolis French, Maadi trees & bakeries
+  const signature: Record<string, { step: number; chance: number; pick: () => string }> = {
+    'Nasr City': { step: 44, chance: 1, pick: () => D.blocks[Math.floor(rand() * D.blocks.length)].key },
+    'New Cairo': { step: 60, chance: 0.75, pick: () => weighted(rand, [[D.boutique.key, 3], [D.mall.key, 2], [D.bakeries[0].key, 1], [D.bakeries[1].key, 1], [STREET.lights.key, 2]] as Array<[string, number]>) },
+    'Sheikh Zayed': { step: 60, chance: 0.75, pick: () => weighted(rand, [[D.boutique.key, 3], [D.mall.key, 2], [D.bakeries[0].key, 1], [D.bakeries[1].key, 1], [STREET.lights.key, 2]] as Array<[string, number]>) },
+    Heliopolis: { step: 58, chance: 0.8, pick: () => D.french[Math.floor(rand() * D.french.length)].key },
+    Maadi: { step: 48, chance: 0.55, pick: () => (rand() < 0.7 ? N.trees[Math.floor(rand() * 3)].key : D.bakeries[Math.floor(rand() * 2)].key) },
+  };
+  for (const [region, sig] of Object.entries(signature)) {
+    for (let gy = 0; gy < WORLD_H; gy += sig.step) {
+      for (let gx = 0; gx < WORLD_W; gx += sig.step) {
+        const x = gx + (rand() - 0.5) * 14;
+        const y = gy + (rand() - 0.5) * 14;
+        if (regionAt(x, y) !== region || rand() > sig.chance) continue;
+        tryPlace(sig.pick(), x, y);
+      }
+    }
+  }
 
   // 4) District fill on a jittered grid
   const step = 50;
@@ -201,11 +268,11 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
   }
 
   // 5) Little fillers: grass tufts, flowers, pebbles
-  for (let i = 0; i < 2600; i++) {
+  for (let i = 0; i < 1800; i++) {
     const x = rand() * WORLD_W;
     const y = wy(SAHEL.sandBottom) + rand() * (WORLD_H - wy(SAHEL.sandBottom));
     const region = regionAt(x, y);
-    if (region === 'clouds') continue;
+    if (region === 'clouds' || (region === 'Nasr City' && rand() < 0.8)) continue;
     const desert = region === 'desert' || region === 'desertBand';
     const key = desert ? (rand() < 0.5 ? N.rock.key : N.shrub.key) : region === 'park' ? N.flowers[Math.floor(rand() * 2)].key : rand() < 0.75 ? N.grassTuft.key : N.flowers[Math.floor(rand() * 2)].key;
     tryPlace(key, x, y, { small: true });

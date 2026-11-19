@@ -159,12 +159,29 @@ const gull: SpriteDef = {
   },
 };
 
+/** Festoon string lights between two posts (the glam lights of Tagamo3 and Zayed). */
+const lights: SpriteDef = {
+  key: 's-lights',
+  w: 30,
+  h: 18,
+  draw(p) {
+    p.vline(1, 2, 15, PAL.black).vline(28, 2, 15, PAL.black);
+    p.rect(0, 16, 3, 2, PAL.black).rect(27, 16, 3, 2, PAL.black);
+    for (let x = 2; x < 28; x++) {
+      const y = 3 + Math.round(Math.sin(((x - 2) / 26) * Math.PI) * 5);
+      p.px(x, y, '#5f5c5a');
+      if (x % 3 === 0) p.px(x, y + 1, x % 2 ? PAL.yellow : PAL.pink);
+    }
+  },
+};
+
 export const STREET = {
   bench,
   lamp,
   cafes: [cafe('s-cafe-red', PAL.red), cafe('s-cafe-green', PAL.green), cafe('s-cafe-blue', PAL.blue)],
   beachUmbrellas: [beachUmbrella('s-umbrella-red', PAL.red), beachUmbrella('s-umbrella-blue', PAL.blue), beachUmbrella('s-umbrella-yellow', '#f0b429')],
   sunbed,
+  lights,
 };
 
 export const VEHICLES = [
@@ -184,6 +201,7 @@ export const STREET_SPRITES: SpriteDef[] = [
   ...STREET.cafes,
   ...STREET.beachUmbrellas,
   sunbed,
+  lights,
   ...VEHICLES,
   felucca,
   wave,

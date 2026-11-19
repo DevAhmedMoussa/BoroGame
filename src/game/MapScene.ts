@@ -17,7 +17,8 @@ import { openMemory } from '../ui/memoryViewer';
 import { AVATAR_HEIGHT, Avatar, SPRITE_SCALE } from './Avatar';
 import { drawGround } from './ground';
 import { MapLife, bakeMap, planScenery, registerTextures } from './scenery';
-import { WORLD_H, WORLD_W, wx, wy } from './world';
+import { Zuzu } from './zuzu';
+import { WORLD_H, WORLD_W, ZUZU_OFFSET, wx, wy } from './world';
 
 export const ZOOM_STEPS = [0.25, 0.5, 1, 1.5, 2, 3, 4];
 export const START_ZOOM = 1;
@@ -36,7 +37,8 @@ interface Trip {
   route: Point[];
   index: number;
   speed: number;
-  place: Place;
+  /** Destination place; trips without one (e.g. walking over to Zuzu) just end at the last point. */
+  place?: Place;
   driving: boolean;
 }
 
@@ -52,6 +54,9 @@ export class MapScene extends Phaser.Scene {
   private avatar3d?: Avatar3D;
   private walk!: Walkable;
   private life!: MapLife;
+  private zuzu?: Zuzu;
+  private nearZuzu = false;
+  onPetChange?: (near: boolean) => void;
   private trip: Trip | null = null;
   private follow = true;
   private busy = false;
@@ -73,6 +78,7 @@ export class MapScene extends Phaser.Scene {
     const places = content.places;
     this.joystick = this.registry.get('joystick');
     this.onTripChange = this.registry.get('onTripChange');
+    this.onPetChange = this.registry.get('onPetChange');
     for (const s of [KUKU, CAR, HEART, SPARKLE, FLAG]) makePixelTexture(this, s);
 
     this.graph = buildRoadGraph(places);
@@ -112,6 +118,16 @@ export class MapScene extends Phaser.Scene {
     });
     for (const id of loadSave().visited) this.markers.setVisited(id, true);
 
+    // Zuzu the dog, right by Kuku's home
+    const homePlace = places.find((p) => p.id === 'kuku-home');
+    if (homePlace) {
+      this.zuzu = new Zuzu(this, wx(homePlace.position.x) + ZUZU_OFFSET.dx, wy(homePlace.position.y) + ZUZU_OFFSET.dy);
+      this.markers.addTag('Zuzu', this.zuzu.x, this.zuzu.y, () => {
+        if (performance.now() - this.camControl.lastGestureEnd < 250) return;
+        this.walkToZuzu();
+      });
+    }
+
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT', false) as MapScene['keys'];
 
@@ -150,6 +166,38 @@ export class MapScene extends Phaser.Scene {
     this.flag.setPosition(px + 18, py - 4).setVisible(true);
   }
 
+  /** Walk over to Zuzu (via the road to Kuku's home, then up to her). */
+  walkToZuzu() {
+    if (this.busy || !this.zuzu) return;
+    this.follow = true;
+    const spot = this.zuzu.standSpot;
+    if (Math.hypot(this.avatar.x - spot.x, this.avatar.y - spot.y) < 30) return;
+    let route: Point[] | null = null;
+    if (this.walk.segment(this.avatar.x, this.avatar.y, spot.x, spot.y) && Math.hypot(this.avatar.x - spot.x, this.avatar.y - spot.y) < 260) {
+      route = [{ x: this.avatar.x, y: this.avatar.y }, spot];
+    } else {
+      route = findRoute(this.graph, this.walk, { x: this.avatar.x, y: this.avatar.y }, 'place:kuku-home');
+      if (route) route.push(spot);
+    }
+    if (!route) return;
+    const len = routeLength(route);
+    const driving = len / WALK_SPEED > MAX_WALK_TIME;
+    const speed = driving ? len / Phaser.Math.Clamp(len / DRIVE_SPEED, DRIVE_TIME.min, DRIVE_TIME.max) : WALK_SPEED;
+    this.trip = { route, index: 1, speed, driving };
+    this.avatar.setDriving(driving);
+    this.onTripChange?.(driving);
+    this.markers.setSelected(null);
+  }
+
+  /** Pet Zuzu: she hops and wags and bursts into hearts. */
+  petZuzu() {
+    if (!this.zuzu || !this.nearZuzu) return;
+    // Turn towards her, but three-quarters to the camera so Kuku's face still shows
+    const dx = this.zuzu.x - this.avatar.x;
+    this.avatar.faceVector(dx, Math.abs(dx) * 0.8);
+    this.zuzu.pet();
+  }
+
   /** Jump straight to the end of the current trip. */
   skipTrip() {
     if (!this.trip || this.busy) return;
@@ -178,6 +226,14 @@ export class MapScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     this.life.update(time, delta, this.cameras.main.worldView);
+    if (this.zuzu) {
+      this.zuzu.update(time);
+      const near = !this.busy && this.zuzu.isNear(this.avatar.x, this.avatar.y);
+      if (near !== this.nearZuzu) {
+        this.nearZuzu = near;
+        this.onPetChange?.(near);
+      }
+    }
     const dt = Math.min(delta, 50) / 1000;
     let moving = false;
 
@@ -257,7 +313,7 @@ export class MapScene extends Phaser.Scene {
       }
       if (this.lockedPlaces.has(place.id)) continue;
       // While auto-travelling, only the destination counts (passing by others is fine).
-      if (this.trip && this.trip.place.id !== place.id) continue;
+      if (this.trip && this.trip.place?.id !== place.id) continue;
       void this.arrive(place);
       return;
     }

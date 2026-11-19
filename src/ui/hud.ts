@@ -45,9 +45,20 @@ export function mountHud(root: HTMLElement, getScene: () => MapScene | undefined
   skip.addEventListener('click', withScene((s) => s.skipTrip()));
   root.appendChild(skip);
 
+  const pet = document.createElement('button');
+  pet.type = 'button';
+  pet.className = 'px-btn px-btn-wide pet-btn';
+  pet.innerHTML = '<span class="pet-heart" aria-hidden="true"></span><span>Pet Zuzu</span>';
+  pet.hidden = true;
+  pet.addEventListener('click', withScene((s) => s.petZuzu()));
+  root.appendChild(pet);
+
   return {
     setSkipVisible(visible: boolean) {
       skip.hidden = !visible;
+    },
+    setPetVisible(visible: boolean) {
+      pet.hidden = !visible;
     },
   };
 }

@@ -92,6 +92,21 @@ export class MarkerLayer {
     this.label(it.el, it.place, visited);
   }
 
+  private tags: Array<{ el: HTMLButtonElement; x: number; y: number }> = [];
+
+  /** A small name tag pinned to a world point (e.g. Zuzu the dog). */
+  addTag(text: string, x: number, y: number, onTap: () => void) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'map-tag';
+    el.innerHTML = `<span class="map-tag-paw" aria-hidden="true"></span><span></span>`;
+    el.lastElementChild!.textContent = text;
+    el.setAttribute('aria-label', text);
+    el.addEventListener('click', onTap);
+    this.root.appendChild(el);
+    this.tags.push({ el, x, y });
+  }
+
   setSelected(id: string | null) {
     for (const [pid, it] of this.items) it.el.classList.toggle('selected', pid === id);
   }
@@ -125,6 +140,11 @@ export class MarkerLayer {
     }
     const w = this.root.clientWidth;
     const h = this.root.clientHeight;
+    for (const t of this.tags) {
+      const x = Math.round((t.x - viewX) * scale);
+      const y = Math.round((t.y - viewY) * scale);
+      t.el.style.transform = `translate(${x}px, ${y}px)`;
+    }
     for (const it of list) {
       const x = it.sx + Math.round(it.ox);
       const offscreen = x < -80 || x > w + 80 || it.sy < -60 || it.sy > h + 160;

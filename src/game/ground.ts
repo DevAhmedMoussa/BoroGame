@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { Place } from '../content';
 import type { RoadGraph } from '../lib/roads';
 import { mulberry } from '../lib/random';
-import { DISTRICTS, ISLAND, NILE, PARKS, SAHEL, WORLD_H, WORLD_W, nileAt, wx, wy } from './world';
+import { DISTRICTS, ISLAND, MAADI_LANES, NILE, PARKS, SAHEL, WORLD_H, WORLD_W, nileAt, wx, wy } from './world';
 
 /**
  * The ground layer: sand, districts, parks, the Nile, the Sahel sea, roads,
@@ -189,6 +189,20 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
       for (const side of [-1, 1]) {
         g.lineStyle(2, C.dash, 0.8).lineBetween(a.x + nx * 11 * side, a.y + ny * 11 * side, b.x + nx * 11 * side, b.y + ny * 11 * side);
       }
+    }
+  }
+
+  // --- Maadi's narrow cobbled streets
+  for (const [w, color] of [[18, C.curb], [14, 0xcfc1a4], [10, 0xb9ad98]] as Array<[number, number]>) {
+    for (const [x1, y1, x2, y2] of MAADI_LANES) g.lineStyle(w, color).lineBetween(wx(x1), wy(y1), wx(x2), wy(y2));
+  }
+  for (const [x1, y1, x2, y2] of MAADI_LANES) {
+    const len = Math.hypot(wx(x2) - wx(x1), wy(y2) - wy(y1));
+    for (let d = 0; d < len; d += 6) {
+      const t = d / len;
+      const px = wx(x1) + (wx(x2) - wx(x1)) * t + (y1 === y2 ? 0 : -2);
+      const py = wy(y1) + (wy(y2) - wy(y1)) * t + (y1 === y2 ? -2 : 0);
+      g.fillStyle(0xa79b86).fillRect(Math.floor(px / 2) * 2, Math.floor(py / 2) * 2, 2, 2);
     }
   }
 
