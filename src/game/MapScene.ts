@@ -258,13 +258,22 @@ export class MapScene extends Phaser.Scene {
     this.busy = true;
     this.lockedPlaces.add(place.id);
     this.stopTrip();
+    this.releaseControls();
     this.avatar.setMoving(false);
     this.avatar.faceVector(0, 1);
     if (markVisited(place.id)) this.markers.setVisited(place.id, true);
     this.sparkle(this.avatar.x, this.avatar.y - AVATAR_HEIGHT / 2);
     await this.avatar.celebrate();
     await openMemory(place);
+    // Whatever was held when the window opened must not keep her walking after it closes.
+    this.releaseControls();
     this.busy = false;
+  }
+
+  /** Let go of the joystick and any held keys. */
+  private releaseControls() {
+    this.joystick?.reset();
+    this.input.keyboard?.resetKeys();
   }
 
   // ---------------------------------------------------------------- helpers

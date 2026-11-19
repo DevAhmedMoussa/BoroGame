@@ -19,10 +19,15 @@ export class Joystick {
     root.appendChild(this.el);
 
     this.el.addEventListener('pointerdown', (e) => {
-      if (this.pointerId !== null) return;
+      // A new touch always wins: if an old one never reported its release, drop it.
+      if (this.pointerId !== null) this.reset();
       e.preventDefault();
       this.pointerId = e.pointerId;
-      this.el.setPointerCapture(e.pointerId);
+      try {
+        this.el.setPointerCapture(e.pointerId);
+      } catch {
+        /* capture is a nice-to-have; window listeners below still catch the release */
+      }
       this.el.classList.add('active');
       this.onStart?.();
       this.track(e);
@@ -31,15 +36,34 @@ export class Joystick {
       if (e.pointerId === this.pointerId) this.track(e);
     });
     const end = (e: PointerEvent) => {
-      if (e.pointerId !== this.pointerId) return;
-      this.pointerId = null;
-      this.el.classList.remove('active');
-      this.value = { x: 0, y: 0, magnitude: 0 };
-      this.knob.style.transform = '';
+      if (e.pointerId === this.pointerId) this.reset();
     };
     this.el.addEventListener('pointerup', end);
     this.el.addEventListener('pointercancel', end);
     this.el.addEventListener('lostpointercapture', end);
+    // Backup: the release can land on something drawn over the joystick
+    // (e.g. a memory window popping up under her finger), so listen everywhere.
+    window.addEventListener('pointerup', end, true);
+    window.addEventListener('pointercancel', end, true);
+    window.addEventListener('blur', () => this.reset());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.reset();
+    });
+  }
+
+  /** Let go: knob back to the centre, no movement. */
+  reset() {
+    if (this.pointerId !== null && this.el.hasPointerCapture?.(this.pointerId)) {
+      try {
+        this.el.releasePointerCapture(this.pointerId);
+      } catch {
+        /* already released */
+      }
+    }
+    this.pointerId = null;
+    this.el.classList.remove('active');
+    this.value = { x: 0, y: 0, magnitude: 0 };
+    this.knob.style.transform = '';
   }
 
   get active() {
