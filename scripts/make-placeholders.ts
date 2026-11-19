@@ -35,7 +35,7 @@ function svg(w: number, h: number, title: string, n: number, colors: string[]) {
 
 let made = 0;
 for (const [i, place] of data.places.entries()) {
-  const dir = path.join(ROOT, 'public', 'photos', place.id);
+  const dir = path.join(ROOT, 'photos', place.id);
   fs.mkdirSync(dir, { recursive: true });
   for (const [k, photo] of (place.photos ?? []).entries()) {
     if (!photo.file.startsWith('placeholder-')) continue;

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { avatarStyle } from '../config';
 import { content, type Place } from '../content';
+import { preloadPlace } from '../content/media';
 import { CameraControl } from '../lib/cameraControl';
 import { findRoute, routeLength, type Point } from '../lib/pathfinding';
 import { buildRoadGraph, type RoadGraph } from '../lib/roads';
@@ -120,6 +121,7 @@ export class MapScene extends Phaser.Scene {
   /** Tap-to-travel: walk (or drive, for long trips) along the roads to a place. */
   travelTo(place: Place) {
     if (this.busy) return;
+    preloadPlace(place.id); // first photos download during the walk
     this.follow = true;
     // Already standing there? Just open the memory again.
     if (this.distTo(place) < ARRIVAL_RADIUS) {
@@ -239,7 +241,9 @@ export class MapScene extends Phaser.Scene {
 
   private checkArrivals() {
     for (const place of content.places) {
-      const inside = this.distTo(place) < ARRIVAL_RADIUS;
+      const dist = this.distTo(place);
+      if (dist < ARRIVAL_RADIUS * 4) preloadPlace(place.id); // walking up with the joystick
+      const inside = dist < ARRIVAL_RADIUS;
       if (!inside) {
         this.lockedPlaces.delete(place.id);
         continue;

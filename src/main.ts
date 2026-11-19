@@ -1,6 +1,7 @@
 import '@fontsource/press-start-2p';
 import '@fontsource/vt323';
 import './style.css';
+import './ui/memories.css';
 import Phaser from 'phaser';
 import { MapScene } from './game/MapScene';
 import { mountHud } from './ui/hud';

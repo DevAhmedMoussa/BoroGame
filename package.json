@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "photos": "tsx scripts/optimize-photos.ts",
+    "predev": "npm run photos",
     "dev": "vite --host",
+    "prebuild": "npm run photos",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "placeholders": "tsx scripts/make-placeholders.ts"

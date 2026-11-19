@@ -1,0 +1,550 @@
+/* ============================================================
+   Map memory bubbles, memory window and full-screen photo view
+   ============================================================ */
+
+/* ---------- floating memory bubble, like Snap Map memories ---------- */
+.marker-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 22px + var(--lift, 26px));
+  translate: -50% 0;
+  width: 42px;
+  height: 42px;
+  padding: 3px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 3px 0 rgba(43, 29, 20, 0.55);
+  animation: bob 2.4s ease-in-out var(--bob-delay, 0s) infinite alternate;
+  transition: scale 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* little tail pointing down at the place */
+.marker-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 8px;
+  height: 8px;
+  margin: -3px 0 0 -5px;
+  background: var(--paper);
+  border-right: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  transform: rotate(45deg);
+}
+
+.bubble-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.bubble-photo canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.bubble-count {
+  position: absolute;
+  right: -12px;
+  top: -10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px 0 4px;
+  font-family: var(--font-title);
+  font-size: 8px;
+  line-height: 1;
+  color: #fff;
+  background: #e5566f;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+}
+
+.bubble-sparkle {
+  position: absolute;
+  left: -9px;
+  top: -9px;
+  animation: twinkle 1.6s steps(2, end) var(--bob-delay, 0s) infinite;
+}
+
+.marker.visited .bubble-sparkle {
+  display: none;
+}
+
+.marker.empty .marker-bubble {
+  opacity: 0.85;
+}
+
+.marker.selected .marker-bubble {
+  scale: 1.2;
+}
+
+/* Zoomed far out: no thumbnails, just a small count chip */
+#markers.far .marker-bubble {
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  animation: none;
+}
+
+#markers.far .marker-bubble::after,
+#markers.far .bubble-photo,
+#markers.far .bubble-sparkle {
+  display: none;
+}
+
+#markers.far .bubble-count {
+  position: static;
+}
+
+@keyframes bob {
+  from {
+    translate: -50% 0;
+  }
+  to {
+    translate: -50% -3px;
+  }
+}
+
+@keyframes twinkle {
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/* ---------- memory window ---------- */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l));
+  background: rgba(43, 29, 20, 0.45);
+  pointer-events: auto;
+  animation: fade-in 0.16s ease-out;
+  transition: background 0.15s;
+}
+
+.modal-backdrop.closing {
+  animation: fade-out 0.2s ease-in forwards;
+}
+
+.modal-backdrop.closing-pop .mv {
+  animation: pop-out 0.2s ease-in forwards;
+}
+
+.modal-backdrop.closing-down .mv {
+  transition: transform 0.2s ease-in;
+  transform: translateY(110%) !important;
+}
+
+.px-frame {
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 3px var(--paper-shade),
+    0 6px 0 var(--ink);
+}
+
+.mv {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+  height: min(100%, 800px);
+  padding: 12px;
+  animation: pop-in 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.2s ease-out;
+}
+
+.mv-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  touch-action: none;
+}
+
+.mv-emblem {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  background: var(--paper-shade);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+}
+
+.mv-emblem img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.mv-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.mv-titles h2 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 15px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.mv-sub {
+  margin: 2px 0 0;
+  font-size: 19px;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+.mv-close {
+  flex: none;
+  font-family: sans-serif;
+  font-size: 18px;
+}
+
+/* Photo slider: horizontal only, never stacked */
+.mv-media {
+  position: relative;
+  flex: 0 0 57%;
+  min-height: 0;
+  overflow: hidden;
+  background: #2b1d14;
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+}
+
+.mv-track {
+  display: flex;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  outline: none;
+}
+
+.mv-track::-webkit-scrollbar {
+  display: none;
+}
+
+.mv-track.dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+}
+
+.mv-slide {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mv-bg {
+  position: absolute;
+  inset: -24px;
+  background: #3a2a1f center / cover no-repeat;
+  filter: blur(16px) brightness(0.7) saturate(1.1);
+}
+
+.mv-photo {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: zoom-in;
+  -webkit-user-drag: none;
+}
+
+video.mv-photo {
+  cursor: pointer;
+}
+
+.mv-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: rgba(251, 241, 220, 0.9);
+  border: 3px solid var(--ink);
+  pointer-events: none;
+}
+
+.mv-play::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 14px;
+  border-left: 18px solid var(--ink);
+  border-top: 11px solid transparent;
+  border-bottom: 11px solid transparent;
+}
+
+.mv-slide.playing .mv-play {
+  display: none;
+}
+
+.mv-slide figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 12px 22px;
+  font-size: 20px;
+  line-height: 1.05;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 0 #000;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+}
+
+.mv-empty p {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 11px;
+  color: var(--paper);
+}
+
+.mv-counter {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 7px 3px;
+  font-family: var(--font-title);
+  font-size: 9px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.mv-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 7px;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.mv-dots i {
+  width: 6px;
+  height: 6px;
+  background: rgba(251, 241, 220, 0.5);
+  border: 1px solid var(--ink);
+}
+
+.mv-dots i.on {
+  background: var(--paper);
+  scale: 1.35;
+}
+
+.single .mv-counter,
+.single .mv-arrow {
+  display: none;
+}
+
+.mv-arrow {
+  position: absolute;
+  top: 50%;
+  display: none;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  padding: 0 0 3px;
+  font-family: var(--font-title);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.mv-arrow.prev {
+  left: 8px;
+}
+
+.mv-arrow.next {
+  right: 8px;
+}
+
+.mv-arrow:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mv-arrow {
+    display: block;
+  }
+}
+
+/* Written memory on lined "paper" */
+.mv-text {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 12px 10px;
+  font-size: 22px;
+  line-height: 24px;
+  color: var(--ink);
+  background: repeating-linear-gradient(#fffaf0 0 23px, #ecdcc0 23px 24px);
+  background-attachment: local;
+  background-position: 0 6px;
+  border: 3px solid var(--paper-shade);
+  border-radius: 6px;
+  touch-action: pan-y;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.mv-text p {
+  margin: 0 0 24px;
+}
+
+.mv-text p:last-child {
+  margin-bottom: 0;
+}
+
+.mv-text strong {
+  color: #b83a52;
+}
+
+/* Wide landscape (tablets, desktop, phones on their side): photos left, memory right */
+@media (orientation: landscape) and (min-width: 640px) {
+  .mv {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    max-width: 940px;
+    height: min(100%, 580px);
+  }
+
+  .mv-head {
+    grid-column: 1 / -1;
+  }
+
+  .mv-media,
+  .mv-text {
+    height: 100%;
+  }
+}
+
+/* ---------- full-screen photo ---------- */
+.lightbox {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 10, 6, 0.94);
+  pointer-events: auto;
+  touch-action: none;
+  overflow: hidden;
+  animation: fade-in 0.15s ease-out;
+}
+
+.lightbox.closing {
+  animation: fade-out 0.15s ease-in forwards;
+}
+
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: center;
+  -webkit-user-drag: none;
+}
+
+.lightbox img.animate {
+  transition: transform 0.2s ease-out;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: calc(12px + var(--safe-t));
+  right: calc(12px + var(--safe-r));
+  font-family: sans-serif;
+  font-size: 18px;
+}
+
+@keyframes pop-in {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pop-out {
+  to {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker-bubble,
+  .bubble-sparkle,
+  .mv,
+  .modal-backdrop,
+  .lightbox {
+    animation: none;
+  }
+}
