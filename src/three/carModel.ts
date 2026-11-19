@@ -8,7 +8,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 export interface CarRig {
   root: THREE.Group;
   wheels: THREE.Group[];
-  /** Where Kuku's root goes while driving (car-local). */
+  /** Top of the driver's seat cushion (car-local); her hips sit here while driving. */
   seat: THREE.Vector3;
 }
 
@@ -119,5 +119,5 @@ export function buildCar(): CarRig {
     }
   }
 
-  return { root, wheels, seat: new THREE.Vector3(0.27, 0.37, -0.3) };
+  return { root, wheels, seat: new THREE.Vector3(0.27, 0.56, -0.36) };
 }

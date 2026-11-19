@@ -14,3 +14,6 @@ export function avatarStyle(): AvatarStyle {
   const fromUrl = new URLSearchParams(location.search).get('avatar');
   return fromUrl === 'pixel' || fromUrl === '3d' ? fromUrl : DEFAULT_AVATAR_STYLE;
 }
+
+/** Her real-life glasses on the 3D avatar (set to false to take them off). */
+export const KUKU_GLASSES = true;

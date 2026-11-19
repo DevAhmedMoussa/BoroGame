@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildCar, type CarRig } from './carModel';
-import { buildKuku, type KukuRig } from './kukuModel';
+import { KUKU_GLASSES } from '../config';
+import { HIP_Y, buildKuku, type KukuRig } from './kukuModel';
 
 /**
  * Renders the 3D Kuku (and her car) into a small transparent WebGL canvas that
@@ -8,12 +9,12 @@ import { buildKuku, type KukuRig } from './kukuModel';
  * Movement logic stays in Phaser; this only draws.
  */
 
-/** World px per 3D unit: Kuku is ~2.5 units, so ~75 world px tall. */
-export const PX_PER_UNIT = 30;
+/** World px per 3D unit: Kuku is ~2.5 units, so ~85 world px tall. */
+export const PX_PER_UNIT = 34;
 /** Camera elevation (3/4 top-down view). */
 const ELEVATION = THREE.MathUtils.degToRad(20);
 /** Visible area around her, in 3D units on the view plane. */
-const VIEW = { left: -1.7, right: 1.7, top: 2.85, bottom: -1.05 };
+const VIEW = { left: -1.7, right: 1.7, top: 3.05, bottom: -1.05 };
 /** Upper bound for the canvas backing store (device px), to keep it cheap when zoomed in. */
 const MAX_BACKING_PX = 760;
 /** The car is drawn a little larger than life so it doesn't look tiny next to her curls. */
@@ -88,7 +89,7 @@ export class Avatar3D {
     this.shadow.renderOrder = -1;
     this.scene.add(this.shadow);
 
-    this.kuku = buildKuku();
+    this.kuku = buildKuku({ glasses: KUKU_GLASSES });
     this.car = buildCar();
     this.car.root.visible = false;
     this.character.add(this.kuku.root, this.car.root);
@@ -130,6 +131,7 @@ export class Avatar3D {
   private animate(s: AvatarState, dt: number) {
     const k = this.kuku;
     const ease = (rate: number) => 1 - Math.exp(-dt * rate);
+    const t = this.time;
 
     // Turn smoothly towards the heading (shortest way round)
     let diff = s.heading - this.yaw;
@@ -146,55 +148,95 @@ export class Avatar3D {
     this.car.root.visible = this.carAmount > 0.02;
     this.car.root.scale.setScalar(Math.max(0.001, this.carAmount) * CAR_SCALE);
     k.legL.visible = k.legR.visible = !inCar;
-    if (inCar) k.root.position.copy(this.car.seat).multiplyScalar(this.carAmount * CAR_SCALE);
-    else k.root.position.set(0, 0, 0);
+    if (inCar) {
+      const seat = this.car.seat;
+      k.root.position.set(seat.x * CAR_SCALE, seat.y * CAR_SCALE - HIP_Y + 0.06, seat.z * CAR_SCALE);
+    } else k.root.position.set(0, 0, 0);
 
     // Shadow follows the current shape
-    const sw = inCar ? 1.5 * CAR_SCALE : 0.95;
-    const sl = inCar ? 2.5 * CAR_SCALE : 0.75;
-    this.shadow.scale.set(sw, sl, 1);
+    this.shadow.scale.set(inCar ? 1.5 * CAR_SCALE : 0.7, inCar ? 2.5 * CAR_SCALE : 0.5, 1);
     this.shadow.rotation.z = this.yaw; // local z of the flattened plane is world up
     this.shadow.position.y = 0.005;
     (this.shadow.material as THREE.MeshBasicMaterial).opacity = 1 / (1 + s.hop / 20);
 
-    const t = this.time;
+    // Pose targets for this frame: [x, y, z] rotations per joint
+    type V3 = [number, number, number];
+    const pose = {
+      armL: [0, 0, 0.1] as V3,
+      armR: [0, 0, -0.1] as V3,
+      foreL: [0, 0, 0] as V3,
+      foreR: [0, 0, 0] as V3,
+      legL: [0, 0, 0] as V3,
+      legR: [0, 0, 0] as V3,
+      shinL: [0, 0, 0] as V3,
+      shinR: [0, 0, 0] as V3,
+    };
+    let bodyY = 0;
+    let bodyYaw = 0;
+    let bodyTilt = 0;
+    let headTilt = 0;
+
     if (inCar) {
-      // Driving: hands on the wheel, wheels rolling, little road bounce
-      k.armL.rotation.set(-1.1, 0, 0.15);
-      k.armR.rotation.set(-1.1, 0, -0.15);
+      // Hands on the wheel, wheels rolling, a little road bounce
+      pose.armL = [-1.15, 0, 0.15];
+      pose.armR = [-1.15, 0, -0.15];
+      pose.foreL = [-0.55, 0, 0];
+      pose.foreR = [-0.55, 0, 0];
       for (const wheel of this.car.wheels) wheel.rotation.x += dt * (s.moving ? 18 : 0);
       this.car.root.position.y = s.moving && !this.reduceMotion ? Math.abs(Math.sin(t * 22)) * 0.025 : 0;
-      k.body.position.y = 0;
-      k.head.rotation.z = Math.sin(t * 2.2) * 0.05; // happy head bop
+      headTilt = Math.sin(t * 2.2) * 0.06; // happy head bop
     } else if (s.moving) {
-      // Walk cycle
-      this.phase += dt * 11;
+      // Walk: arms swing against the legs, the back knee bends
+      this.phase += dt * 9;
       const swing = Math.sin(this.phase);
-      k.legL.rotation.x = swing * 0.6;
-      k.legR.rotation.x = -swing * 0.6;
-      k.armL.rotation.set(-swing * 0.55, 0, 0.22);
-      k.armR.rotation.set(swing * 0.55, 0, -0.22);
-      k.body.position.y = Math.abs(Math.cos(this.phase)) * 0.06;
-      k.body.rotation.y = swing * 0.06;
-      k.head.rotation.z = swing * 0.03;
-      k.hair.scale.set(1, 1 + Math.abs(Math.cos(this.phase)) * 0.025, 1);
+      pose.armL = [-swing * 0.5, 0, 0.1];
+      pose.armR = [swing * 0.5, 0, -0.1];
+      pose.foreL = [-0.35, 0, 0];
+      pose.foreR = [-0.35, 0, 0];
+      pose.legL = [swing * 0.5, 0, 0];
+      pose.legR = [-swing * 0.5, 0, 0];
+      pose.shinL = [Math.max(0, swing) * 0.85, 0, 0];
+      pose.shinR = [Math.max(0, -swing) * 0.85, 0, 0];
+      bodyY = Math.abs(Math.cos(this.phase)) * 0.035;
+      bodyYaw = swing * 0.06;
+      headTilt = swing * 0.025;
+    } else if (s.hop > 0.5) {
+      // Arrival: arms up!
+      pose.armL = [0, 0, 2.7];
+      pose.armR = [0, 0, -2.7];
     } else {
-      // Idle: settle the limbs, breathe, gentle hair bounce
-      const settle = ease(10);
-      k.legL.rotation.x += -k.legL.rotation.x * settle;
-      k.legR.rotation.x += -k.legR.rotation.x * settle;
-      const celebrating = s.hop > 0.5;
-      const armTarget = celebrating ? 2.6 : 0.22;
-      k.armL.rotation.x += -k.armL.rotation.x * settle;
-      k.armR.rotation.x += -k.armR.rotation.x * settle;
-      k.armL.rotation.z += (armTarget - k.armL.rotation.z) * ease(14);
-      k.armR.rotation.z += (-armTarget - k.armR.rotation.z) * ease(14);
-      k.body.rotation.y += -k.body.rotation.y * settle;
+      // Idle: hands on hips like her avatar, breathing, a gentle sway
+      pose.armL = [0.1, 0, 0.62];
+      pose.armR = [0.1, 0, -0.62];
+      pose.foreL = [0, 0, -1.5];
+      pose.foreR = [0, 0, 1.5];
       const breathe = this.reduceMotion ? 0 : Math.sin(t * 2.2);
-      k.body.position.y = breathe * 0.012;
-      k.head.rotation.z = breathe * 0.025;
-      k.hair.scale.set(1 + breathe * 0.01, 1 - breathe * 0.012, 1 + breathe * 0.01);
+      bodyY = breathe * 0.006;
+      bodyTilt = this.reduceMotion ? 0 : Math.sin(t * 1.1) * 0.015;
+      headTilt = this.reduceMotion ? 0 : Math.sin(t * 0.8) * 0.05;
     }
+
+    const blend = ease(14);
+    const apply = (obj: THREE.Object3D, [x, y, z]: V3) => {
+      obj.rotation.x += (x - obj.rotation.x) * blend;
+      obj.rotation.y += (y - obj.rotation.y) * blend;
+      obj.rotation.z += (z - obj.rotation.z) * blend;
+    };
+    apply(k.armL, pose.armL);
+    apply(k.armR, pose.armR);
+    apply(k.forearmL, pose.foreL);
+    apply(k.forearmR, pose.foreR);
+    apply(k.legL, pose.legL);
+    apply(k.legR, pose.legR);
+    apply(k.shinL, pose.shinL);
+    apply(k.shinR, pose.shinR);
+    k.body.position.y += (bodyY - k.body.position.y) * ease(20);
+    k.body.rotation.y += (bodyYaw - k.body.rotation.y) * blend;
+    k.body.rotation.z += (bodyTilt - k.body.rotation.z) * blend;
+    k.head.rotation.z += (headTilt - k.head.rotation.z) * blend;
+    // Curls bounce a little with each step
+    const bounce = s.moving && !inCar ? Math.abs(Math.cos(this.phase)) * 0.02 : 0;
+    k.hair.scale.y += (1 + bounce - k.hair.scale.y) * ease(20);
 
     // Blink every few seconds
     if (t > this.nextBlink) {
