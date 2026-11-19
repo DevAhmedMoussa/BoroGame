@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { avatarStyle } from '../config';
+import { COCKPIT_RIDES, avatarStyle } from '../config';
 import { content, type Place } from '../content';
 import { preloadPlace } from '../content/media';
 import { CameraControl } from '../lib/cameraControl';
@@ -20,7 +20,7 @@ import { AVATAR_HEIGHT, Avatar, SPRITE_SCALE } from './Avatar';
 import { drawGround } from './ground';
 import { MapLife, bakeMap, planScenery, registerTextures } from './scenery';
 import { Zuzu } from './zuzu';
-import { WORLD_H, WORLD_W, ZUZU_OFFSET, wx, wy } from './world';
+import { WORLD_H, WORLD_W, ZUZU_OFFSET, isWater, wx, wy } from './world';
 
 export const ZOOM_STEPS = [0.25, 0.5, 1, 1.5, 2, 3, 4];
 export const START_ZOOM = 1;
@@ -58,6 +58,8 @@ export class MapScene extends Phaser.Scene {
   private life!: MapLife;
   private zuzu?: Zuzu;
   private nearZuzu = false;
+  /** True while the 3D cockpit drive is playing. */
+  private riding = false;
   onPetChange?: (near: boolean) => void;
   private trip: Trip | null = null;
   private follow = true;
@@ -161,6 +163,7 @@ export class MapScene extends Phaser.Scene {
     this.trip = { route, index: 1, speed, place, driving };
     this.avatar.setDriving(driving);
     this.onTripChange?.(driving);
+    if (driving) void this.startRide(this.trip, place);
     this.markers.setSelected(place.id);
     const px = wx(place.position.x);
     const py = wy(place.position.y);
@@ -189,6 +192,7 @@ export class MapScene extends Phaser.Scene {
     this.avatar.setDriving(driving);
     this.onTripChange?.(driving);
     this.markers.setSelected(null);
+    if (driving) void this.startRide(this.trip);
   }
 
   /** Open the wardrobe (3D avatar only); the chosen outfit is saved and worn on the map. */
@@ -220,6 +224,40 @@ export class MapScene extends Phaser.Scene {
     const dx = this.zuzu.x - this.avatar.x;
     this.avatar.faceVector(dx, Math.abs(dx) * 0.8);
     this.zuzu.pet();
+  }
+
+  /** Long trip in the car: play the 3D cockpit drive, then arrive. */
+  private async startRide(trip: Trip, place?: Place) {
+    if (!COCKPIT_RIDES || !this.avatar3d || this.riding) return;
+    this.riding = true;
+    this.onTripChange?.(false); // the ride has its own Skip
+    this.releaseControls();
+    const crossesNile = trip.route.some((p, i) => {
+      if (i === 0) return false;
+      const q = trip.route[i - 1];
+      return isWater((p.x + q.x) / 2 / WORLD_W, (p.y + q.y) / 2 / WORLD_H);
+    });
+    const duration = Phaser.Math.Clamp(routeLength(trip.route) / 450, 5, 8);
+    try {
+      const { playRide, rideTheme } = await import('../three/cockpit');
+      await playRide({
+        name: place?.name ?? 'Zuzu',
+        emblem: place ? place.emblem : 'kuku-home',
+        theme: rideTheme(place?.id),
+        crossesNile,
+        duration,
+      });
+    } catch (err) {
+      console.warn('Cockpit ride unavailable, driving on the map instead.', err);
+    } finally {
+      this.riding = false;
+      this.releaseControls();
+    }
+    // Arrive: jump to the end of the route (the arrival check takes it from there)
+    if (this.trip === trip) {
+      this.follow = true;
+      this.skipTrip();
+    }
   }
 
   /** Jump straight to the end of the current trip. */
@@ -261,7 +299,7 @@ export class MapScene extends Phaser.Scene {
     const dt = Math.min(delta, 50) / 1000;
     let moving = false;
 
-    if (!this.busy) {
+    if (!this.busy && !this.riding) {
       const input = this.readInput();
       if (input.magnitude > 0) {
         if (this.trip) this.stopTrip();

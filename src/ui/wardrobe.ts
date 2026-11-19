@@ -8,7 +8,7 @@ import { buildKuku } from '../three/kukuModel';
 type LayerKey = (typeof LAYERS)[number]['key'];
 
 /**
- * Wardrobe screen: a big live 3D preview of Kuku turning slowly (drag to spin her),
+ * Wardrobe screen: a big live 3D preview of Kuku facing you (drag to turn her),
  * ‹ › arrows to change each layer, colour swatches, and Done.
  * Only clothes and accessories change; her face, hair, skin and glasses stay hers.
  * Resolves with the chosen outfit.
@@ -22,7 +22,7 @@ export function openWardrobe(initial: Outfit): Promise<Outfit> {
       <div class="wd px-frame" role="dialog" aria-modal="true" aria-labelledby="wd-title">
         <header class="wd-head">
           <h2 id="wd-title">Wardrobe</h2>
-          <p>Pick today's outfit</p>
+          <p>Pick today's outfit · drag her to turn</p>
         </header>
         <div class="wd-stage" aria-label="Kuku preview (drag to turn her)"><canvas></canvas></div>
         <div class="wd-rows"></div>
@@ -81,9 +81,8 @@ export function openWardrobe(initial: Outfit): Promise<Outfit> {
     const ro = new ResizeObserver(resize);
     ro.observe(stage);
 
-    // slow turn, drag to spin
-    let yaw = 0.35;
-    let spin = 0.55;
+    // she faces you; drag to turn her
+    let yaw = 0.2;
     let drag: { x: number; yaw: number } | null = null;
     stage.addEventListener('pointerdown', (e) => {
       drag = { x: e.clientX, yaw };
@@ -104,7 +103,7 @@ export function openWardrobe(initial: Outfit): Promise<Outfit> {
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (!drag && !reduce) yaw += spin * dt;
+      void dt;
       holder.rotation.y = yaw;
       rig.body.position.y = reduce ? 0 : Math.sin(now / 450) * 0.006;
       rig.head.rotation.z = reduce ? 0 : Math.sin(now / 1200) * 0.04;
@@ -162,9 +161,6 @@ export function openWardrobe(initial: Outfit): Promise<Outfit> {
     };
     const apply = () => {
       dressKuku(rig, outfit);
-      // a little "twirl" so the change is noticed
-      spin = 4;
-      setTimeout(() => (spin = 0.55), 260);
       renderRows();
       renderer.render(scene, camera);
     };
