@@ -13,7 +13,7 @@ export const PX_PER_UNIT = 30;
 /** Camera elevation (3/4 top-down view). */
 const ELEVATION = THREE.MathUtils.degToRad(20);
 /** Visible area around her, in 3D units on the view plane. */
-const VIEW = { left: -1.7, right: 1.7, top: 3.05, bottom: -1.05 };
+const VIEW = { left: -1.7, right: 1.7, top: 2.85, bottom: -1.05 };
 /** Upper bound for the canvas backing store (device px), to keep it cheap when zoomed in. */
 const MAX_BACKING_PX = 760;
 /** The car is drawn a little larger than life so it doesn't look tiny next to her curls. */
@@ -64,18 +64,18 @@ export class Avatar3D {
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.2;
 
     this.camera = new THREE.OrthographicCamera(VIEW.left, VIEW.right, VIEW.top, VIEW.bottom, 0.1, 100);
     this.camera.position.set(0, Math.sin(ELEVATION), Math.cos(ELEVATION)).multiplyScalar(30);
     this.camera.lookAt(0, 0, 0);
 
     // Soft, warm lighting: sky/ground fill + a key light from the top-left + a cool rim
-    this.scene.add(new THREE.HemisphereLight(0xfff4e6, 0x8a6a48, 1.5));
-    const key = new THREE.DirectionalLight(0xffffff, 1.9);
+    this.scene.add(new THREE.HemisphereLight(0xfff6ec, 0xb08a6a, 2.0));
+    const key = new THREE.DirectionalLight(0xfff8f0, 1.35);
     key.position.set(-2, 4, 3);
     this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0xcfe3ff, 0.9);
+    const rim = new THREE.DirectionalLight(0xffe0ee, 0.7);
     rim.position.set(2, 2.5, -3);
     this.scene.add(rim);
 
@@ -172,8 +172,8 @@ export class Avatar3D {
       const swing = Math.sin(this.phase);
       k.legL.rotation.x = swing * 0.6;
       k.legR.rotation.x = -swing * 0.6;
-      k.armL.rotation.set(-swing * 0.55, 0, 0.12);
-      k.armR.rotation.set(swing * 0.55, 0, -0.12);
+      k.armL.rotation.set(-swing * 0.55, 0, 0.22);
+      k.armR.rotation.set(swing * 0.55, 0, -0.22);
       k.body.position.y = Math.abs(Math.cos(this.phase)) * 0.06;
       k.body.rotation.y = swing * 0.06;
       k.head.rotation.z = swing * 0.03;
@@ -184,7 +184,7 @@ export class Avatar3D {
       k.legL.rotation.x += -k.legL.rotation.x * settle;
       k.legR.rotation.x += -k.legR.rotation.x * settle;
       const celebrating = s.hop > 0.5;
-      const armTarget = celebrating ? 2.6 : 0.12;
+      const armTarget = celebrating ? 2.6 : 0.22;
       k.armL.rotation.x += -k.armL.rotation.x * settle;
       k.armR.rotation.x += -k.armR.rotation.x * settle;
       k.armL.rotation.z += (armTarget - k.armL.rotation.z) * ease(14);

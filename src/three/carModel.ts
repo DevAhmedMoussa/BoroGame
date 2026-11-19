@@ -119,5 +119,5 @@ export function buildCar(): CarRig {
     }
   }
 
-  return { root, wheels, seat: new THREE.Vector3(0.27, 0.24, -0.3) };
+  return { root, wheels, seat: new THREE.Vector3(0.27, 0.37, -0.3) };
 }
