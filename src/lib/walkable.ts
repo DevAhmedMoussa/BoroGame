@@ -8,6 +8,7 @@ const BRIDGE_HALF_WIDTH = 11;
 export class Walkable {
   private bridges: Array<{ ax: number; ay: number; bx: number; by: number }> = [];
   private seaLine = wy(SAHEL.seaBottom) + 14;
+  private ponds: Array<{ x: number; y: number; rx: number; ry: number }> = [];
 
   constructor(graph: RoadGraph) {
     for (const e of graph.edges) {
@@ -18,8 +19,14 @@ export class Walkable {
     }
   }
 
+  /** Ponds out in the countryside can't be walked into either. */
+  block(ponds: Array<{ x: number; y: number; rx: number; ry: number }>) {
+    this.ponds.push(...ponds);
+  }
+
   at(x: number, y: number): boolean {
     if (x < EDGE_MARGIN || x > WORLD_W - EDGE_MARGIN || y < this.seaLine || y > WORLD_H - EDGE_MARGIN) return false;
+    for (const p of this.ponds) if (((x - p.x) / (p.rx + 6)) ** 2 + ((y - p.y) / (p.ry + 6)) ** 2 < 1) return false;
     if (!isWater(x / WORLD_W, y / WORLD_H)) return true;
     return this.bridges.some((br) => distToSegment(x, y, br.ax, br.ay, br.bx, br.by) <= BRIDGE_HALF_WIDTH);
   }

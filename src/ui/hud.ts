@@ -51,17 +51,19 @@ export function mountHud(root: HTMLElement, getScene: () => MapScene | undefined
   const pet = document.createElement('button');
   pet.type = 'button';
   pet.className = 'px-btn px-btn-wide pet-btn';
-  pet.innerHTML = '<span class="pet-heart" aria-hidden="true"></span><span>Pet Zuzu</span>';
+  pet.innerHTML = '<span class="pet-heart" aria-hidden="true"></span><span class="pet-label"></span>';
   pet.hidden = true;
-  pet.addEventListener('click', withScene((s) => s.petZuzu()));
+  pet.addEventListener('click', withScene((s) => s.petNearby()));
   root.appendChild(pet);
 
   return {
     setSkipVisible(visible: boolean) {
       skip.hidden = !visible;
     },
-    setPetVisible(visible: boolean) {
-      pet.hidden = !visible;
+    /** Show "Pet <name>" for the closest pet, or hide the button (null). */
+    setPet(name: string | null) {
+      pet.hidden = !name;
+      if (name) pet.querySelector('.pet-label')!.textContent = `Pet ${name}`;
     },
   };
 }

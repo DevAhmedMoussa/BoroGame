@@ -583,11 +583,15 @@ video.mv-photo {
     radial-gradient(ellipse, #e5566f 60%, transparent 62%) 1px 3px / 7px 5px no-repeat;
 }
 
+.map-tag.above {
+  translate: -50% calc(-100% - 4px);
+}
+
 #markers.far .map-tag {
   display: none;
 }
 
-/* ---------- Pet Zuzu button ---------- */
+/* ---------- Pet button (Zuzu / the owl) ---------- */
 .pet-btn {
   position: absolute;
   left: 50%;

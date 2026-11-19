@@ -77,6 +77,8 @@ export const MAADI_LANES: Array<[number, number, number, number]> = [
 
 /** Where Zuzu the dog lives: offset from Kuku's Home, in world px. */
 export const ZUZU_OFFSET = { dx: 105, dy: 48 };
+/** Where the owl's perch stands: offset from Kuku's Home, in world px (just right of Zuzu). */
+export const OWL_OFFSET = { dx: 168, dy: 40 };
 
 export interface RoadNode {
   id: string;

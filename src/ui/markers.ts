@@ -94,11 +94,11 @@ export class MarkerLayer {
 
   private tags: Array<{ el: HTMLButtonElement; x: number; y: number }> = [];
 
-  /** A small name tag pinned to a world point (e.g. Zuzu the dog). */
-  addTag(text: string, x: number, y: number, onTap: () => void) {
+  /** A small name tag pinned to a world point (e.g. Zuzu the dog), below it or `above` it. */
+  addTag(text: string, x: number, y: number, onTap: () => void, above = false) {
     const el = document.createElement('button');
     el.type = 'button';
-    el.className = 'map-tag';
+    el.className = above ? 'map-tag above' : 'map-tag';
     el.innerHTML = `<span class="map-tag-paw" aria-hidden="true"></span><span></span>`;
     el.lastElementChild!.textContent = text;
     el.setAttribute('aria-label', text);

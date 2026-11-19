@@ -10,8 +10,12 @@ import { ANIMALS } from '../sprites/scenery/animals';
 import { BUILDINGS } from '../sprites/scenery/buildings';
 import { DISTRICT_BUILDINGS } from '../sprites/scenery/districtBuildings';
 import { NATURE } from '../sprites/scenery/nature';
+import { COUNTRY } from '../sprites/scenery/countryside';
+import { CRITTERS } from '../sprites/scenery/critters';
 import { LIFE, STREET, VEHICLES } from '../sprites/scenery/street';
-import { DISTRICTS, ISLAND, MAADI_LANES, PARKS, SAHEL, WORLD_H, WORLD_W, ZUZU_OFFSET, isWater, nileAt, wx, wy } from './world';
+import { MEADOW, inPond, paintCountryside, planCountryside, type Countryside, type Seg } from './countryside';
+import { Critters, type CritterSpot } from './critters';
+import { DISTRICTS, ISLAND, MAADI_LANES, OWL_OFFSET, PARKS, SAHEL, WORLD_H, WORLD_W, ZUZU_OFFSET, isWater, nileAt, wx, wy } from './world';
 
 /** World px per art px: every sprite pixel is drawn as a 2×2 block. */
 export const ART = 2;
@@ -38,7 +42,8 @@ export interface Deco {
   x: number;
   /** Ground (feet) y in world px. */
   y: number;
-  live?: 'palm';
+  /** Not baked: palms sway, 'anim' sprites cycle their frames (swings, cats). */
+  live?: 'palm' | 'anim';
   /** Special buildings that are never thinned out. */
   landmark?: boolean;
 }
@@ -70,7 +75,9 @@ const TABLES: Record<string, { density: number; table: Table }> = {
   Mohandessin: { density: 0.85, table: [[B.apartments, 4], [B.shops, 2], [N.trees, 0.8], [B.kiosk, 0.5], [B.mosque, 0.3]] },
   island: { density: 0.85, table: [[B.villas, 2], [D.french, 1.2], [B.apartments, 1], [N.trees, 2.5], [N.palms, 1], [STREET.cafes, 0.6]] },
   park: { density: 0.6, table: [[N.trees, 2.5], [N.bigTree, 0.7], [N.bush, 1.5], [N.flowers, 3], [STREET.bench, 1.2], [STREET.lamp, 0.6], [N.palms, 0.8]] },
-  generic: { density: 0.45, table: [[B.apartments, 2.5], [D.blocks, 1], [N.trees, 0.7], [N.bush, 1], [N.palms, 0.6], [N.shrub, 1], [N.rock, 0.5], [B.kiosk, 0.3]] },
+  // Between the districts: green meadows get flowers and the odd bush; bare sand stays mostly open
+  meadow: { density: 0.16, table: [[N.flowers, 3], [N.bush, 1.6], [N.trees, 0.4]] },
+  generic: { density: 0.08, table: [[N.palms, 1.5], [N.bush, 1]] },
   desert: { density: 0.22, table: [[N.dune, 3], [N.rock, 2], [N.shrub, 3], [A.cactus, 0.6]] },
   desertBand: { density: 0.3, table: [[N.dune, 3], [N.rock, 2], [N.shrub, 3]] },
 };
@@ -98,10 +105,17 @@ function regionAt(x: number, y: number): string {
   return best;
 }
 
-export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
+export interface SceneryPlan {
+  decos: Deco[];
+  critters: CritterSpot[];
+  country: Countryside;
+}
+
+export function planScenery(places: Place[], graph: RoadGraph): SceneryPlan {
   const rand = mulberry(2024);
   const decos: Deco[] = [];
-  const roads = graph.edges.map((e) => {
+  const critters: CritterSpot[] = [];
+  const roads: Seg[] = graph.edges.map((e) => {
     const a = graph.nodes.get(e.a)!;
     const b = graph.nodes.get(e.b)!;
     return { ax: a.x, ay: a.y, bx: b.x, by: b.y, half: e.kind === 'highway' ? 21 : e.kind === 'spur' ? 15 : 18 };
@@ -110,6 +124,10 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
   const placePts = places.map((p) => ({ x: wx(p.position.x), y: wy(p.position.y) }));
   const home = places.find((p) => p.id === 'kuku-home');
   const zuzu = home ? { x: wx(home.position.x) + ZUZU_OFFSET.dx, y: wy(home.position.y) + ZUZU_OFFSET.dy } : null;
+  const owl = home ? { x: wx(home.position.x) + OWL_OFFSET.dx, y: wy(home.position.y) + OWL_OFFSET.dy } : null;
+  // Zuzu and the owl share a little lawn by Kuku's home that nothing else is built on
+  const yard = zuzu && owl ? { x0: zuzu.x - 56, x1: owl.x + 84, y0: Math.min(zuzu.y, owl.y) - 46, y1: Math.max(zuzu.y, owl.y) + 30 } : null;
+  const country = planCountryside(roads, placePts, yard ? [{ x: (yard.x0 + yard.x1) / 2, y: (yard.y0 + yard.y1) / 2 + 8, r: 120 }] : []);
 
   // Occupancy: spatial hash of placed boxes
   const CELL = 64;
@@ -129,7 +147,7 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
       }
   };
 
-  const tryPlace = (key: string, x: number, y: number, opts: { allowSea?: boolean; small?: boolean } = {}) => {
+  const tryPlace = (key: string, x: number, y: number, opts: { allowSea?: boolean; small?: boolean; live?: Deco['live']; pondOk?: boolean } = {}) => {
     const def = SPRITES.get(key)!;
     const hw = (def.w * ART) / 2 - 2;
     const h = def.h * ART;
@@ -149,8 +167,9 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
       const { cx, half } = nileAt(sy / WORLD_H);
       if (sy > wy(0.19) && Math.abs(sx / WORLD_W - cx) < half + 0.006 && !isOnIsland(sx, sy)) return false;
       for (const r of roads) if (distToSegment(sx, sy, r.ax, r.ay, r.bx, r.by) < r.half + 3) return false;
+      if (!opts.pondOk && inPond(country.ponds, sx, sy, 1.2)) return false;
     }
-    if (zuzu && Math.abs(x - zuzu.x) < 46 + hw && y > zuzu.y - 40 && y - h < zuzu.y + 30) return false;
+    if (yard && x + hw > yard.x0 && x - hw < yard.x1 && y > yard.y0 && y - h < yard.y1) return false;
     for (const p of placePts) {
       const dx = (x - p.x) / (72 + hw);
       const dy = (y - h * 0.4 - (p.y - 10)) / (60 + h * 0.4);
@@ -159,7 +178,7 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
     const box: [number, number, number, number] = [x - hw, y - h * (opts.small ? 0.6 : 0.9), x + hw, y + 2];
     for (const o of boxesNear(...box)) if (box[0] < o[2] && box[2] > o[0] && box[1] < o[3] && box[3] > o[1]) return false;
     occupy(box);
-    decos.push({ key, x: Math.round(x / ART) * ART, y: Math.round(y / ART) * ART, live: key.startsWith('n-palm') ? 'palm' : undefined });
+    decos.push({ key, x: Math.round(x / ART) * ART, y: Math.round(y / ART) * ART, live: opts.live ?? (key.startsWith('n-palm') ? 'palm' : undefined) });
     return true;
   };
 
@@ -196,6 +215,7 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
         if (leafy) key = N.trees[Math.floor(rand() * 3)].key;
         else if (region === 'New Cairo' || region === 'Sheikh Zayed' || region === 'Giza') key = rand() < 0.6 ? N.palms[Math.floor(rand() * 2)].key : STREET.lamp.key;
         else if (region === 'Heliopolis') key = rand() < 0.75 ? STREET.lamp.key : N.trees[0].key;
+        else if (region === 'generic') key = rand() < 0.75 ? N.palms[0].key : STREET.lamp.key;
         else key = rand() < 0.55 ? STREET.lamp.key : N.trees[Math.floor(rand() * 3)].key;
         tryPlace(key, x, y);
       }
@@ -236,6 +256,30 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
   const pyr = places.find((p) => p.id === 'pyramids');
   if (pyr) for (const [dx, dy] of [[-150, 60], [140, 70], [-70, 130], [60, 150]]) tryPlace(N.camel.key, wx(pyr.position.x) + dx, wy(pyr.position.y) + dy);
 
+  // 3a) The perch for the owl next to Zuzu, then little scenes out in the countryside
+  if (owl) decos.push({ key: COUNTRY.owlPerch.key, x: Math.round(owl.x / ART) * ART, y: Math.round(owl.y / ART) * ART, landmark: true });
+  placeVignettes(country, tryPlace, critters, rand);
+
+  // Cats lounging by the roads in town, pigeons pecking on the plazas
+  for (let tries = 0, cats = 0; tries < 600 && cats < 18; tries++) {
+    const e = graph.edges[Math.floor(rand() * graph.edges.length)];
+    if (e.kind !== 'road') continue;
+    const a = graph.nodes.get(e.a)!;
+    const b = graph.nodes.get(e.b)!;
+    const t = 0.15 + rand() * 0.7;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const side = rand() < 0.5 ? -1 : 1;
+    const x = a.x + (b.x - a.x) * t - ((b.y - a.y) / len) * 30 * side;
+    const y = a.y + (b.y - a.y) * t + ((b.x - a.x) / len) * 30 * side + 6;
+    const region = regionAt(x, y);
+    if (region === 'generic' || region === 'desert' || region === 'desertBand' || region === 'beach' || region === 'sea' || region === 'clouds') continue;
+    if (tryPlace(CRITTERS.cats[cats % 3].key, x, y, { small: true, live: 'anim' })) cats++;
+  }
+  places.forEach((p, i) => {
+    if (i % 2 === 1 && p.id !== 'kuku-home') return;
+    critters.push({ kind: 'pigeons', x: wx(p.position.x) + (i % 4 < 2 ? -34 : 34), y: wy(p.position.y) + 24 });
+  });
+
   // 3b) Signature buildings first, so each district's character gets the space:
   //     Nasr City crammed with plain blocks, Tagamo3/Zayed high-end, Heliopolis French, Maadi trees & bakeries
   const highEndPick = () =>
@@ -264,7 +308,8 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
     for (let gx = step / 2; gx < WORLD_W; gx += step) {
       const x = gx + (rand() - 0.5) * 30;
       const y = gy + (rand() - 0.5) * 30;
-      const region = regionAt(x, y);
+      let region = regionAt(x, y);
+      if (region === 'generic' && country.green(x, y) > MEADOW + 0.02) region = 'meadow';
       const t = TABLES[region];
       if (!t || rand() > t.density) continue;
       tryPlace(resolve(weighted(rand, t.table)), x, y);
@@ -278,7 +323,14 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
     const region = regionAt(x, y);
     if (region === 'clouds' || (region === 'Nasr City' && rand() < 0.8)) continue;
     const desert = region === 'desert' || region === 'desertBand';
-    const key = desert ? (rand() < 0.5 ? N.rock.key : N.shrub.key) : region === 'park' ? N.flowers[Math.floor(rand() * 2)].key : rand() < 0.75 ? N.grassTuft.key : N.flowers[Math.floor(rand() * 2)].key;
+    let key: string;
+    if (desert) key = rand() < 0.5 ? N.rock.key : N.shrub.key;
+    else if (region === 'park') key = N.flowers[Math.floor(rand() * 2)].key;
+    else if (region === 'generic') {
+      // the meadows already have grass and flowers painted in; bare sand just gets the odd tuft
+      if (country.green(x, y) > MEADOW || rand() < 0.75) continue;
+      key = N.grassTuft.key;
+    } else key = rand() < 0.75 ? N.grassTuft.key : N.flowers[Math.floor(rand() * 2)].key;
     tryPlace(key, x, y, { small: true });
   }
 
@@ -286,7 +338,117 @@ export function planScenery(places: Place[], graph: RoadGraph): Deco[] {
   const BUILDING_THINNING = 0.35;
   const kept = decos.filter((d) => !d.key.startsWith('b-') || d.landmark || d.key.startsWith('b-chalet') || rand() >= BUILDING_THINNING);
   kept.sort((a, b) => a.y - b.y);
-  return kept;
+  return { decos: kept, critters, country };
+}
+
+type TryPlace = (key: string, x: number, y: number, opts?: { small?: boolean; live?: Deco['live']; pondOk?: boolean }) => boolean;
+
+/** Little scenes out in the meadows: each a small, deliberate arrangement rather than random scatter. */
+function placeVignettes(country: Countryside, put: TryPlace, critters: CritterSpot[], rand: () => number) {
+  const N = NATURE;
+  const C = COUNTRY;
+  const pick = <T,>(a: T[]) => a[Math.floor(rand() * a.length)];
+  const tree = () => pick(N.trees).key;
+  for (const v of country.vignettes) {
+    const { x, y } = v;
+    switch (v.kind) {
+      case 'grove': {
+        put(rand() < 0.6 ? N.bigTree.key : N.trees[1].key, x, y);
+        const n = 4 + Math.floor(rand() * 3);
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2 + rand() * 0.5;
+          const r = 44 + rand() * 20;
+          put(tree(), x + Math.cos(a) * r * 1.25, y + Math.sin(a) * r * 0.8);
+        }
+        put(STREET.bench.key, x + 6, y + 34);
+        put(pick(N.flowers).key, x - 30, y + 40, { small: true });
+        critters.push({ kind: 'butterflies', x, y: y + 30 });
+        break;
+      }
+      case 'farm': {
+        put(pick(C.fields).key, x, y);
+        put(pick(C.fields).key, x + 100, y + 6);
+        put(C.hut.key, x - 86, y - 4);
+        put(C.haybale.key, x - 46, y + 34, { small: true });
+        put(C.haybale.key, x - 30, y + 42, { small: true });
+        put(rand() < 0.5 ? C.donkey.key : ANIMALS.goat.key, x + 52, y + 46);
+        put(N.palms[0].key, x - 120, y - 30);
+        critters.push({ kind: 'chickens', x: x - 70, y: y + 40 });
+        break;
+      }
+      case 'pond': {
+        const p = country.ponds.find((q) => q.x === x && q.y === y)!;
+        put(C.reeds.key, x - p.rx * 0.92, y + p.ry * 0.15, { small: true, pondOk: true });
+        put(C.reeds.key, x + p.rx * 0.88, y - p.ry * 0.25, { small: true, pondOk: true });
+        put(STREET.bench.key, x - 10, y + p.ry + 28);
+        put(N.palms[0].key, x + p.rx + 26, y - 4);
+        put(N.palms[1].key, x + p.rx + 50, y + 18);
+        put(tree(), x - p.rx - 34, y - 6);
+        put(N.bigTree.key, x - p.rx - 10, y - p.ry - 30);
+        put(pick(C.beds).key, x + 36, y + p.ry + 30, { small: true });
+        critters.push({ kind: 'ducks', x, y, rx: p.rx, ry: p.ry });
+        critters.push({ kind: 'butterflies', x: x + 30, y: y + p.ry + 20 });
+        break;
+      }
+      case 'picnic': {
+        put(N.bigTree.key, x - 6, y - 20);
+        put(C.picnic.key, x + 14, y + 40, { small: true });
+        put(pick(N.flowers).key, x - 44, y + 30, { small: true });
+        put(pick(C.beds).key, x + 66, y + 10, { small: true });
+        put(tree(), x + 70, y - 40);
+        critters.push({ kind: 'butterflies', x: x + 20, y: y + 30 });
+        break;
+      }
+      case 'playground': {
+        put(C.swing.key, x, y, { live: 'anim' });
+        put(C.slide.key, x + 58, y + 6);
+        put(C.sandbox.key, x - 54, y + 12, { small: true });
+        put(STREET.bench.key, x + 4, y + 44);
+        put(tree(), x - 52, y - 42);
+        put(tree(), x + 66, y - 40);
+        critters.push({ kind: 'pigeons', x: x - 20, y: y + 50 });
+        break;
+      }
+      case 'garden': {
+        for (const dx of [-40, 0, 40]) put(C.fence.key, x + dx, y - 34, { small: true });
+        for (const [dx, dy] of [[-22, -8], [22, -8], [-22, 18], [22, 18]]) put(pick(C.beds).key, x + dx, y + dy, { small: true });
+        put(tree(), x - 76, y - 10);
+        put(STREET.bench.key, x + 70, y + 12);
+        put(N.palms[1].key, x + 82, y - 30);
+        critters.push({ kind: 'butterflies', x: x - 10, y: y + 4 });
+        critters.push({ kind: 'butterflies', x: x + 20, y: y + 20 });
+        break;
+      }
+      case 'dovecote': {
+        put(C.dovecote.key, x, y);
+        put(C.hut.key, x - 66, y + 10);
+        put(C.haybale.key, x + 36, y + 16, { small: true });
+        put(N.palms[0].key, x + 60, y - 14);
+        critters.push({ kind: 'orbit', x, y: y - 86 });
+        critters.push({ kind: 'chickens', x: x + 6, y: y + 50 });
+        break;
+      }
+      case 'kite': {
+        put(C.kiteKid.key, x, y, { small: true });
+        put(pick(N.flowers).key, x - 30, y + 14, { small: true });
+        put(pick(N.flowers).key, x + 34, y + 20, { small: true });
+        put(tree(), x - 70, y - 30);
+        critters.push({ kind: 'kite', x, y });
+        critters.push({ kind: 'butterflies', x: x + 10, y: y + 30 });
+        break;
+      }
+      case 'homestead': {
+        put(C.hut.key, x, y);
+        put(C.laundry.key, x + 66, y + 16);
+        put(pick(CRITTERS.cats).key, x - 26, y + 18, { small: true, live: 'anim' });
+        put(N.palms[0].key, x - 52, y - 16);
+        put(tree(), x + 60, y - 34);
+        put(pick(C.beds).key, x + 6, y + 30, { small: true });
+        critters.push({ kind: 'chickens', x: x + 30, y: y + 52 });
+        break;
+      }
+    }
+  }
 }
 
 function isOnIsland(x: number, y: number) {
@@ -298,11 +460,26 @@ function isOnIsland(x: number, y: number) {
 // ---------------------------------------------------------------- baking
 
 /** Bakes ground + static scenery + emblems into one half-resolution map texture. */
-export function bakeMap(scene: Phaser.Scene, ground: Phaser.GameObjects.Graphics, decos: Deco[], places: Place[]) {
+export function bakeMap(
+  scene: Phaser.Scene,
+  ground: { base: Phaser.GameObjects.Graphics; top: Phaser.GameObjects.Graphics },
+  plan: SceneryPlan,
+  places: Place[],
+) {
+  const { decos } = plan;
   const rt = scene.add.renderTexture(0, 0, WORLD_W / ART, WORLD_H / ART).setOrigin(0, 0).setScale(ART).setDepth(0);
-  ground.setScale(1 / ART);
-  rt.draw(ground, 0, 0);
-  ground.destroy();
+  ground.base.setScale(1 / ART);
+  rt.draw(ground.base, 0, 0);
+  ground.base.destroy();
+  // meadows, footpaths and ponds sit on the sand, under the Nile and the roads
+  const meadowKey = 'countryside-meadows';
+  if (scene.textures.exists(meadowKey)) scene.textures.remove(meadowKey);
+  scene.textures.addCanvas(meadowKey, paintCountryside(plan.country, ART));
+  rt.draw(meadowKey, 0, 0);
+  ground.top.setScale(1 / ART);
+  rt.draw(ground.top, 0, 0);
+  ground.top.destroy();
+  scene.time.delayedCall(1000, () => scene.textures.exists(meadowKey) && scene.textures.remove(meadowKey));
 
   const emblemFor = (p: Place) => EMBLEMS[p.emblem] ?? EMBLEMS[p.id];
   const items: Array<{ key: string; x: number; y: number }> = [
@@ -384,6 +561,8 @@ export class MapLife {
   private flocks: Array<{ birds: Phaser.GameObjects.Image[]; t: number; dur: number; wait: number; ax: number; ay: number; bx: number; by: number }> = [];
   private gulls: Array<{ img: Phaser.GameObjects.Image; cx: number; cy: number; r: number; phase: number }> = [];
   private glow?: Phaser.GameObjects.Ellipse;
+  private anims: Array<{ img: Phaser.GameObjects.Image; kind: 'swing' | 'cat'; phase: number }> = [];
+  private critters: Critters;
   private adj = new Map<string, string[]>();
   private reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -391,13 +570,19 @@ export class MapLife {
     private scene: Phaser.Scene,
     private graph: RoadGraph,
     places: Place[],
-    decos: Deco[],
+    plan: SceneryPlan,
   ) {
     const rand = mulberry(7);
+    const { decos } = plan;
 
     for (const d of decos.filter((d) => d.live === 'palm')) {
       this.palms.push(scene.add.image(d.x, d.y, d.key).setOrigin(0.5, 1).setScale(ART).setDepth(d.y));
     }
+    for (const d of decos.filter((d) => d.live === 'anim')) {
+      const img = scene.add.image(d.x, d.y, d.key, 0).setOrigin(0.5, 1).setScale(ART).setDepth(d.y);
+      this.anims.push({ img, kind: d.key === COUNTRY.swing.key ? 'swing' : 'cat', phase: rand() * 10000 });
+    }
+    this.critters = new Critters(scene, graph, plan.critters, this.reduce);
 
     // Ripples on the Nile and the sea
     for (let i = 0; i < 260 && this.waves.length < 150; i++) {
@@ -470,10 +655,24 @@ export class MapLife {
     this.waves.push({ img, phase: r * 5000 });
   }
 
-  update(time: number, delta: number, view: Phaser.Geom.Rectangle) {
+  update(time: number, delta: number, view: Phaser.Geom.Rectangle, kuku: { x: number; y: number }) {
     const dt = Math.min(delta, 50) / 1000;
     const pad = 120;
     const vis = (x: number, y: number) => x > view.x - pad && x < view.right + pad && y > view.y - pad && y < view.bottom + pad * 2;
+
+    this.critters.update(time, dt, vis, kuku);
+    if (!this.reduce) {
+      for (const a of this.anims) {
+        if (!vis(a.img.x, a.img.y)) continue;
+        const t = time + a.phase;
+        if (a.kind === 'swing') a.img.setFrame([0, 1, 2, 1][Math.floor(t / 260) % 4]);
+        else {
+          // tail swish now and then, a slow blink
+          const cycle = t % 5200;
+          a.img.setFrame(cycle > 4900 ? 2 : cycle < 1600 ? Math.floor(t / 280) % 2 : 0);
+        }
+      }
+    }
 
     if (!this.reduce) {
       for (const p of this.palms) if (vis(p.x, p.y)) p.rotation = Math.sin(time / 900 + p.x * 0.01) * 0.035;

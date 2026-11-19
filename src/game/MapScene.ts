@@ -18,9 +18,11 @@ import { openMemory } from '../ui/memoryViewer';
 import { toast } from '../ui/toast';
 import { AVATAR_HEIGHT, Avatar, SPRITE_SCALE } from './Avatar';
 import { drawGround } from './ground';
+import { Owl } from './owl';
+import type { Pet } from './pet';
 import { MapLife, bakeMap, planScenery, registerTextures } from './scenery';
 import { Zuzu } from './zuzu';
-import { WORLD_H, WORLD_W, ZUZU_OFFSET, isWater, wx, wy } from './world';
+import { OWL_OFFSET, WORLD_H, WORLD_W, ZUZU_OFFSET, isWater, wx, wy } from './world';
 
 export const ZOOM_STEPS = [0.25, 0.5, 1, 1.5, 2, 3, 4];
 export const START_ZOOM = 1;
@@ -41,6 +43,8 @@ interface Trip {
   speed: number;
   /** Destination place; trips without one (e.g. walking over to Zuzu) just end at the last point. */
   place?: Place;
+  /** Shown on the car ride when there's no place (e.g. the pet's name). */
+  label?: string;
   driving: boolean;
 }
 
@@ -56,11 +60,13 @@ export class MapScene extends Phaser.Scene {
   private avatar3d?: Avatar3D;
   private walk!: Walkable;
   private life!: MapLife;
-  private zuzu?: Zuzu;
-  private nearZuzu = false;
+  /** Zuzu and the owl by Kuku's home. */
+  private pets: Pet[] = [];
+  private nearPet: Pet | null = null;
   /** True while the 3D cockpit drive is playing. */
   private riding = false;
-  onPetChange?: (near: boolean) => void;
+  /** Called with the pet's name when Kuku is close enough to pet one (null when not). */
+  onPetChange?: (name: string | null) => void;
   private trip: Trip | null = null;
   private follow = true;
   private busy = false;
@@ -89,9 +95,10 @@ export class MapScene extends Phaser.Scene {
     this.walk = new Walkable(this.graph);
     // Pixel-art map: ground + scenery + emblems baked into one texture, plus the moving bits
     registerTextures(this);
-    const decos = planScenery(places, this.graph);
-    bakeMap(this, drawGround(this, places, this.graph), decos, places);
-    this.life = new MapLife(this, this.graph, places, decos);
+    const plan = planScenery(places, this.graph);
+    this.walk.block(plan.country.ponds);
+    bakeMap(this, drawGround(this, places, this.graph), plan, places);
+    this.life = new MapLife(this, this.graph, places, plan);
 
     this.camControl = new CameraControl(this, {
       dpr: this.dpr,
@@ -122,14 +129,24 @@ export class MapScene extends Phaser.Scene {
     });
     for (const id of loadSave().visited) this.markers.setVisited(id, true);
 
-    // Zuzu the dog, right by Kuku's home
+    // Zuzu the dog and the owl on her perch, right by Kuku's home
     const homePlace = places.find((p) => p.id === 'kuku-home');
     if (homePlace) {
-      this.zuzu = new Zuzu(this, wx(homePlace.position.x) + ZUZU_OFFSET.dx, wy(homePlace.position.y) + ZUZU_OFFSET.dy);
-      this.markers.addTag('Zuzu', this.zuzu.x, this.zuzu.y, () => {
-        if (performance.now() - this.camControl.lastGestureEnd < 250) return;
-        this.walkToZuzu();
-      });
+      const hx = wx(homePlace.position.x);
+      const hy = wy(homePlace.position.y);
+      this.pets = [new Zuzu(this, hx + ZUZU_OFFSET.dx, hy + ZUZU_OFFSET.dy), new Owl(this, hx + OWL_OFFSET.dx, hy + OWL_OFFSET.dy)];
+      for (const pet of this.pets) {
+        this.markers.addTag(
+          pet.name,
+          pet.tag.x,
+          pet.tag.y,
+          () => {
+            if (performance.now() - this.camControl.lastGestureEnd < 250) return;
+            this.walkToPet(pet);
+          },
+          pet.tag.above,
+        );
+      }
     }
 
     const kb = this.input.keyboard!;
@@ -171,11 +188,11 @@ export class MapScene extends Phaser.Scene {
     this.flag.setPosition(px + 18, py - 4).setVisible(true);
   }
 
-  /** Walk over to Zuzu (via the road to Kuku's home, then up to her). */
-  walkToZuzu() {
-    if (this.busy || !this.zuzu) return;
+  /** Walk over to a pet (via the road to Kuku's home, then up to it). */
+  walkToPet(pet: Pet) {
+    if (this.busy) return;
     this.follow = true;
-    const spot = this.zuzu.standSpot;
+    const spot = pet.standSpot;
     if (Math.hypot(this.avatar.x - spot.x, this.avatar.y - spot.y) < 30) return;
     let route: Point[] | null = null;
     if (this.walk.segment(this.avatar.x, this.avatar.y, spot.x, spot.y) && Math.hypot(this.avatar.x - spot.x, this.avatar.y - spot.y) < 260) {
@@ -188,7 +205,7 @@ export class MapScene extends Phaser.Scene {
     const len = routeLength(route);
     const driving = len / WALK_SPEED > MAX_WALK_TIME;
     const speed = driving ? len / Phaser.Math.Clamp(len / DRIVE_SPEED, DRIVE_TIME.min, DRIVE_TIME.max) : WALK_SPEED;
-    this.trip = { route, index: 1, speed, driving };
+    this.trip = { route, index: 1, speed, driving, label: pet.name };
     this.avatar.setDriving(driving);
     this.onTripChange?.(driving);
     this.markers.setSelected(null);
@@ -217,13 +234,14 @@ export class MapScene extends Phaser.Scene {
     }
   }
 
-  /** Pet Zuzu: she hops and wags and bursts into hearts. */
-  petZuzu() {
-    if (!this.zuzu || !this.nearZuzu) return;
-    // Turn towards her, but three-quarters to the camera so Kuku's face still shows
-    const dx = this.zuzu.x - this.avatar.x;
+  /** Pet whoever is closest (Zuzu hops and wags, the owl flaps and hoots). */
+  petNearby() {
+    const pet = this.nearPet;
+    if (!pet) return;
+    // Turn towards it, but three-quarters to the camera so Kuku's face still shows
+    const dx = pet.x - this.avatar.x;
     this.avatar.faceVector(dx, Math.abs(dx) * 0.8);
-    this.zuzu.pet();
+    pet.pet();
   }
 
   /** Long trip in the car: play the 3D cockpit drive, then arrive. */
@@ -241,7 +259,7 @@ export class MapScene extends Phaser.Scene {
     try {
       const { playRide, rideTheme } = await import('../three/cockpit');
       await playRide({
-        name: place?.name ?? 'Zuzu',
+        name: place?.name ?? trip.label ?? "Kuku's Home",
         emblem: place ? place.emblem : 'kuku-home',
         theme: rideTheme(place?.id),
         crossesNile,
@@ -287,14 +305,20 @@ export class MapScene extends Phaser.Scene {
   // ---------------------------------------------------------------- per frame
 
   update(time: number, delta: number) {
-    this.life.update(time, delta, this.cameras.main.worldView);
-    if (this.zuzu) {
-      this.zuzu.update(time);
-      const near = !this.busy && this.zuzu.isNear(this.avatar.x, this.avatar.y);
-      if (near !== this.nearZuzu) {
-        this.nearZuzu = near;
-        this.onPetChange?.(near);
+    this.life.update(time, delta, this.cameras.main.worldView, this.avatar);
+    let nearest: Pet | null = null;
+    let best = Infinity;
+    for (const pet of this.pets) {
+      pet.update(time);
+      const d = pet.distance(this.avatar.x, this.avatar.y);
+      if (!this.busy && d < best) {
+        best = d;
+        nearest = pet;
       }
+    }
+    if (nearest !== this.nearPet) {
+      this.nearPet = nearest;
+      this.onPetChange?.(nearest?.name ?? null);
     }
     const dt = Math.min(delta, 50) / 1000;
     let moving = false;

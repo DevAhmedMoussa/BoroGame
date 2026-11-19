@@ -18,5 +18,8 @@ export function avatarStyle(): AvatarStyle {
 /** Her real-life glasses on the 3D avatar (set to false to take them off). */
 export const KUKU_GLASSES = true;
 
+/** The owl who lives on a perch next to Zuzu (shown on the map tag and the "Pet …" button). */
+export const OWL_NAME = 'Owl';
+
 /** Long trips play the 3D cockpit drive (set to false to just drive the little car across the map). */
 export const COCKPIT_RIDES = true;

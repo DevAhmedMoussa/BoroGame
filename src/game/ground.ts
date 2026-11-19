@@ -47,6 +47,7 @@ const C = {
   outline: 0x3b2a1e,
 };
 
+/** Two layers: `base` (sand, districts, parks) and `top` (Nile, roads, plazas); the meadows are painted in between. */
 export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGraph) {
   const g = scene.add.graphics();
   const rand = mulberry(42);
@@ -110,13 +111,14 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
     }
   }
 
+  const top = scene.add.graphics();
   // --- the Nile: sandy bank, water, a lighter channel down the middle
   const nileTop = wy(NILE[0][1]);
   const stamp = (color: number, extra: number, scale = 1) => {
-    g.fillStyle(color);
+    top.fillStyle(color);
     for (let y = nileTop; y <= WORLD_H + 40; y += 4) {
       const { cx, half } = nileAt(y / WORLD_H);
-      g.fillCircle(wx(cx), y, wx(half) * scale + extra);
+      top.fillCircle(wx(cx), y, wx(half) * scale + extra);
     }
   };
   stamp(C.bank, 12);
@@ -124,12 +126,12 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
   stamp(C.nile, 0);
   stamp(C.nileLight, 0, 0.35);
   // Zamalek island with a sandy shore
-  g.fillStyle(C.bank).fillEllipse(wx(ISLAND.x), wy(ISLAND.y), wx(ISLAND.rx) * 2 + 14, wy(ISLAND.ry) * 2 + 14);
-  g.fillStyle(C.island).fillEllipse(wx(ISLAND.x), wy(ISLAND.y), wx(ISLAND.rx) * 2, wy(ISLAND.ry) * 2);
+  top.fillStyle(C.bank).fillEllipse(wx(ISLAND.x), wy(ISLAND.y), wx(ISLAND.rx) * 2 + 14, wy(ISLAND.ry) * 2 + 14);
+  top.fillStyle(C.island).fillEllipse(wx(ISLAND.x), wy(ISLAND.y), wx(ISLAND.rx) * 2, wy(ISLAND.ry) * 2);
   for (let i = 0; i < 200; i++) {
     const a = rand() * Math.PI * 2;
     const r = Math.sqrt(rand()) * 0.92;
-    g.fillStyle(rand() < 0.5 ? C.grassDark : C.grassLight).fillRect(
+    top.fillStyle(rand() < 0.5 ? C.grassDark : C.grassLight).fillRect(
       Math.floor((wx(ISLAND.x) + Math.cos(a) * r * wx(ISLAND.rx)) / 2) * 2,
       Math.floor((wy(ISLAND.y) + Math.sin(a) * r * wy(ISLAND.ry)) / 2) * 2,
       2,
@@ -143,14 +145,14 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
     for (const e of graph.edges) {
       if (!kinds.includes(e.kind)) continue;
       const [a, b] = seg(e);
-      g.lineStyle(w, color, 1).lineBetween(a.x, a.y, b.x, b.y);
-      g.fillStyle(color).fillCircle(a.x, a.y, w / 2).fillCircle(b.x, b.y, w / 2);
+      top.lineStyle(w, color, 1).lineBetween(a.x, a.y, b.x, b.y);
+      top.fillStyle(color).fillCircle(a.x, a.y, w / 2).fillCircle(b.x, b.y, w / 2);
     }
   };
   // bridge shadows on the water first
   for (const e of graph.edges.filter((e) => e.kind === 'bridge')) {
     const [a, b] = seg(e);
-    g.lineStyle(30, C.nileDark, 0.8).lineBetween(a.x, a.y + 10, b.x, b.y + 10);
+    top.lineStyle(30, C.nileDark, 0.8).lineBetween(a.x, a.y + 10, b.x, b.y + 10);
   }
   stroke(38, C.curb, ['highway']);
   stroke(34, C.desertDark, ['highway']);
@@ -170,12 +172,12 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
     const ny = ux;
     if (e.kind === 'bridge') {
       for (const side of [-1, 1]) {
-        g.lineStyle(3, C.rail).lineBetween(a.x + nx * 13 * side, a.y + ny * 13 * side, b.x + nx * 13 * side, b.y + ny * 13 * side);
+        top.lineStyle(3, C.rail).lineBetween(a.x + nx * 13 * side, a.y + ny * 13 * side, b.x + nx * 13 * side, b.y + ny * 13 * side);
         for (let s = 0; s < len; s += 14) {
-          g.fillStyle(C.rail).fillRect(a.x + ux * s + nx * 13 * side - 2, a.y + uy * s + ny * 13 * side - 4, 4, 6);
+          top.fillStyle(C.rail).fillRect(a.x + ux * s + nx * 13 * side - 2, a.y + uy * s + ny * 13 * side - 4, 4, 6);
         }
       }
-      for (let s = 6; s < len; s += 10) g.lineStyle(2, C.deckDark).lineBetween(a.x + ux * s - nx * 10, a.y + uy * s - ny * 10, a.x + ux * s + nx * 10, a.y + uy * s + ny * 10);
+      for (let s = 6; s < len; s += 10) top.lineStyle(2, C.deckDark).lineBetween(a.x + ux * s - nx * 10, a.y + uy * s - ny * 10, a.x + ux * s + nx * 10, a.y + uy * s + ny * 10);
       continue;
     }
     const dashColor = e.kind === 'highway' ? C.yellow : C.dash;
@@ -183,18 +185,18 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
     if (e.kind === 'spur') continue;
     for (let s = 10; s < len - 10; s += dashLen * 2) {
       const t = Math.min(len, s + dashLen);
-      g.lineStyle(3, dashColor).lineBetween(a.x + ux * s, a.y + uy * s, a.x + ux * t, a.y + uy * t);
+      top.lineStyle(3, dashColor).lineBetween(a.x + ux * s, a.y + uy * s, a.x + ux * t, a.y + uy * t);
     }
     if (e.kind === 'highway') {
       for (const side of [-1, 1]) {
-        g.lineStyle(2, C.dash, 0.8).lineBetween(a.x + nx * 11 * side, a.y + ny * 11 * side, b.x + nx * 11 * side, b.y + ny * 11 * side);
+        top.lineStyle(2, C.dash, 0.8).lineBetween(a.x + nx * 11 * side, a.y + ny * 11 * side, b.x + nx * 11 * side, b.y + ny * 11 * side);
       }
     }
   }
 
   // --- Maadi's narrow cobbled streets
   for (const [w, color] of [[18, C.curb], [14, 0xcfc1a4], [10, 0xb9ad98]] as Array<[number, number]>) {
-    for (const [x1, y1, x2, y2] of MAADI_LANES) g.lineStyle(w, color).lineBetween(wx(x1), wy(y1), wx(x2), wy(y2));
+    for (const [x1, y1, x2, y2] of MAADI_LANES) top.lineStyle(w, color).lineBetween(wx(x1), wy(y1), wx(x2), wy(y2));
   }
   for (const [x1, y1, x2, y2] of MAADI_LANES) {
     const len = Math.hypot(wx(x2) - wx(x1), wy(y2) - wy(y1));
@@ -202,7 +204,7 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
       const t = d / len;
       const px = wx(x1) + (wx(x2) - wx(x1)) * t + (y1 === y2 ? 0 : -2);
       const py = wy(y1) + (wy(y2) - wy(y1)) * t + (y1 === y2 ? -2 : 0);
-      g.fillStyle(0xa79b86).fillRect(Math.floor(px / 2) * 2, Math.floor(py / 2) * 2, 2, 2);
+      top.fillStyle(0xa79b86).fillRect(Math.floor(px / 2) * 2, Math.floor(py / 2) * 2, 2, 2);
     }
   }
 
@@ -210,15 +212,15 @@ export function drawGround(scene: Phaser.Scene, places: Place[], graph: RoadGrap
   for (const p of places) {
     const x = wx(p.position.x);
     const y = wy(p.position.y);
-    g.fillStyle(C.plazaRing).fillEllipse(x, y + 6, 132, 76);
-    g.fillStyle(C.plaza).fillEllipse(x, y + 6, 124, 70);
+    top.fillStyle(C.plazaRing).fillEllipse(x, y + 6, 132, 76);
+    top.fillStyle(C.plaza).fillEllipse(x, y + 6, 124, 70);
     for (let i = -56; i <= 56; i += 8) {
       for (let j = -30; j <= 34; j += 8) {
         if ((i / 62) ** 2 + ((j - 6) / 35) ** 2 > 0.85) continue;
-        if (((i + j) / 8) % 2 === 0) g.fillStyle(C.plazaDark).fillRect(x + i, y + j, 8, 8);
+        if (((i + j) / 8) % 2 === 0) top.fillStyle(C.plazaDark).fillRect(x + i, y + j, 8, 8);
       }
     }
   }
 
-  return g;
+  return { base: g, top };
 }
