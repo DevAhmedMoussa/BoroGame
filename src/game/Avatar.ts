@@ -36,7 +36,7 @@ export class Avatar extends Phaser.GameObjects.Container {
     this.add([this.shadow, this.body_, this.car]);
     scene.add.existing(this);
     this.addToUpdateList(); // containers don't get preUpdate by default
-    this.setDepth(10);
+    this.setDepth(8000); // above all scenery (only visible in pixel-avatar mode)
   }
 
   /** Update facing from a movement direction (any angle). */
@@ -88,7 +88,7 @@ export class Avatar extends Phaser.GameObjects.Container {
       const heart = this.scene.add
         .image(this.x, this.y - AVATAR_HEIGHT - 6, 'heart')
         .setScale(SPRITE_SCALE)
-        .setDepth(20);
+        .setDepth(9000);
       this.scene.tweens.add({
         targets: heart,
         y: heart.y - 18 * SPRITE_SCALE,

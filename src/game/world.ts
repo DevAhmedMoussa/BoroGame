@@ -53,6 +53,17 @@ export const DISTRICTS: District[] = [
   { name: 'Mohandessin', x: 0.33, y: 0.5, rx: 0.08, ry: 0.07, color: 0xe9d9b4 },
 ];
 
+/** Green parks (normalized ellipses), drawn as grass with flowers and trees. */
+export const PARKS: Array<{ x: number; y: number; rx: number; ry: number }> = [
+  { x: 0.67, y: 0.29, rx: 0.045, ry: 0.022 }, // Merryland-ish park, Heliopolis
+  { x: 0.82, y: 0.58, rx: 0.04, ry: 0.02 }, // International Garden, Nasr City
+  { x: 0.78, y: 0.86, rx: 0.05, ry: 0.022 }, // New Cairo park
+  { x: 0.63, y: 0.9, rx: 0.05, ry: 0.025 }, // Maadi green
+  { x: 0.16, y: 0.42, rx: 0.045, ry: 0.02 }, // Zayed park
+  { x: 0.32, y: 0.44, rx: 0.03, ry: 0.016 }, // Mohandessin square
+  { x: 0.36, y: 0.75, rx: 0.035, ry: 0.02 }, // Giza gardens
+];
+
 export interface RoadNode {
   id: string;
   x: number;

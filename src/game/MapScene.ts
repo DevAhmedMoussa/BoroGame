@@ -15,7 +15,8 @@ import type { Joystick } from '../ui/joystick';
 import { MarkerLayer } from '../ui/markers';
 import { openMemory } from '../ui/memoryViewer';
 import { AVATAR_HEIGHT, Avatar, SPRITE_SCALE } from './Avatar';
-import { drawMap } from './drawMap';
+import { drawGround } from './ground';
+import { MapLife, bakeMap, planScenery, registerTextures } from './scenery';
 import { WORLD_H, WORLD_W, wx, wy } from './world';
 
 export const ZOOM_STEPS = [0.25, 0.5, 1, 1.5, 2, 3, 4];
@@ -50,6 +51,7 @@ export class MapScene extends Phaser.Scene {
 
   private avatar3d?: Avatar3D;
   private walk!: Walkable;
+  private life!: MapLife;
   private trip: Trip | null = null;
   private follow = true;
   private busy = false;
@@ -75,7 +77,11 @@ export class MapScene extends Phaser.Scene {
 
     this.graph = buildRoadGraph(places);
     this.walk = new Walkable(this.graph);
-    drawMap(this, places, this.graph);
+    // Pixel-art map: ground + scenery + emblems baked into one texture, plus the moving bits
+    registerTextures(this);
+    const decos = planScenery(places, this.graph);
+    bakeMap(this, drawGround(this, places, this.graph), decos, places);
+    this.life = new MapLife(this, this.graph, places, decos);
 
     this.camControl = new CameraControl(this, {
       dpr: this.dpr,
@@ -86,8 +92,8 @@ export class MapScene extends Phaser.Scene {
     this.camControl.onUserMove = () => (this.follow = false);
 
     // Destination marker: pulsing ring + little flag
-    this.ring = this.add.ellipse(0, 0, 60, 26).setStrokeStyle(4, 0xe5566f, 1).setVisible(false).setDepth(5);
-    this.flag = this.add.image(0, 0, 'flag').setOrigin(0.1, 1).setScale(SPRITE_SCALE).setVisible(false).setDepth(6);
+    this.ring = this.add.ellipse(0, 0, 60, 26).setStrokeStyle(4, 0xe5566f, 1).setVisible(false).setDepth(7000);
+    this.flag = this.add.image(0, 0, 'flag').setOrigin(0.1, 1).setScale(SPRITE_SCALE).setVisible(false).setDepth(7001);
     this.tweens.add({ targets: this.ring, scale: { from: 0.7, to: 1.15 }, alpha: { from: 1, to: 0.3 }, duration: 700, yoyo: true, repeat: -1 });
 
     // Avatar starts at Kuku's Home, just beside the dot (inside its radius, so it doesn't trigger)
@@ -170,7 +176,8 @@ export class MapScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- per frame
 
-  update(_time: number, delta: number) {
+  update(time: number, delta: number) {
+    this.life.update(time, delta, this.cameras.main.worldView);
     const dt = Math.min(delta, 50) / 1000;
     let moving = false;
 
@@ -285,7 +292,7 @@ export class MapScene extends Phaser.Scene {
   private sparkle(x: number, y: number) {
     for (let i = 0; i < 7; i++) {
       const a = (i / 7) * Math.PI * 2;
-      const s = this.add.image(x, y, 'sparkle').setScale(SPRITE_SCALE).setDepth(21);
+      const s = this.add.image(x, y, 'sparkle').setScale(SPRITE_SCALE).setDepth(9001);
       this.tweens.add({
         targets: s,
         x: x + Math.cos(a) * 34,

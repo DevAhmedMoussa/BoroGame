@@ -1,5 +1,6 @@
 import type { Place } from '../content';
 import { coverThumb, mediaFor } from '../content/media';
+import { EMBLEM_TOP } from '../game/scenery';
 import { wx, wy } from '../game/world';
 
 /**
@@ -11,8 +12,6 @@ import { wx, wy } from '../game/world';
  * itself, and the name banner below. The whole thing is one big tap target.
  */
 
-/** Half the height of a place emblem in world px; the bubble floats just above it. */
-const EMBLEM_HALF = 26;
 /** Below this zoom the map is "far": thumbnails hide, just the count shows. */
 const FAR_ZOOM = 0.35;
 /** Markers closer than this on screen (CSS px) get nudged apart. */
@@ -104,7 +103,7 @@ export class MarkerLayer {
    */
   update(viewX: number, viewY: number, scale: number, zoom: number) {
     this.root.classList.toggle('far', zoom < FAR_ZOOM);
-    this.root.style.setProperty('--lift', `${Math.round(Math.max(18, EMBLEM_HALF * scale + 6))}px`);
+    this.root.style.setProperty('--lift', `${Math.round(Math.max(18, EMBLEM_TOP * scale + 4))}px`);
     const list = [...this.items.values()];
     for (const it of list) {
       it.sx = Math.round((it.x - viewX) * scale);

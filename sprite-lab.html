@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Sprite lab</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 12px;
+        background: #e8d3a3;
+        font: 12px monospace;
+        color: #2b1d14;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: flex-end;
+      }
+      figure {
+        margin: 0;
+        text-align: center;
+      }
+      canvas {
+        image-rendering: pixelated;
+        background: rgba(255, 255, 255, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Dev-only (not in the build): every code-drawn sprite, enlarged. ?scale=4&only=emblem -->
+    <div class="grid" id="grid"></div>
+    <script type="module" src="/src/sprites/spriteLab.ts"></script>
+  </body>
+</html>
