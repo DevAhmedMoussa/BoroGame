@@ -13,6 +13,7 @@ const PERCH_TOP = 33;
  */
 export class Owl implements Pet {
   readonly name = OWL_NAME;
+  readonly action = `Pet ${OWL_NAME}`;
   readonly img: Phaser.GameObjects.Image;
   private happyUntil = 0;
   private blinkAt = 2000;

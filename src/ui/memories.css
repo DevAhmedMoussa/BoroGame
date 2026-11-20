@@ -603,6 +603,7 @@ video.mv-photo {
   height: 48px;
   padding: 0 16px;
   font-size: 11px;
+  white-space: nowrap;
   color: #fff;
   background: #e5566f;
   border-color: var(--ink);

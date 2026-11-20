@@ -7,6 +7,8 @@ export const PET_RADIUS = 80;
 /** Something Kuku can walk over to and pet (Zuzu, the owl). */
 export interface Pet {
   readonly name: string;
+  /** Text on the action button, e.g. "Give Zuzu a Treat". */
+  readonly action: string;
   readonly x: number;
   readonly y: number;
   /** Where its name tag is pinned (below the point, or above it). */

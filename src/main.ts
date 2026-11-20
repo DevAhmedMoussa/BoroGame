@@ -36,7 +36,7 @@ const game = new Phaser.Game({
       g.registry.set('dpr', dpr);
       g.registry.set('joystick', joystick);
       g.registry.set('onTripChange', (canSkip: boolean) => hud.setSkipVisible(canSkip));
-      g.registry.set('onPetChange', (name: string | null) => hud.setPet(name));
+      g.registry.set('onPetChange', (action: string | null) => hud.setPet(action));
     },
   },
 });

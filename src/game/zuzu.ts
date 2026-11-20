@@ -8,6 +8,7 @@ import { ART } from './scenery';
  */
 export class Zuzu implements Pet {
   readonly name = 'Zuzu';
+  readonly action = 'Give Zuzu a Treat';
   readonly img: Phaser.GameObjects.Image;
   private happyUntil = 0;
   private nextWag = 1500;

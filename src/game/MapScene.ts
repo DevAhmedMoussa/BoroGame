@@ -65,8 +65,8 @@ export class MapScene extends Phaser.Scene {
   private nearPet: Pet | null = null;
   /** True while the 3D cockpit drive is playing. */
   private riding = false;
-  /** Called with the pet's name when Kuku is close enough to pet one (null when not). */
-  onPetChange?: (name: string | null) => void;
+  /** Called with the pet's button text when Kuku is close enough to one (null when not). */
+  onPetChange?: (action: string | null) => void;
   private trip: Trip | null = null;
   private follow = true;
   private busy = false;
@@ -318,7 +318,7 @@ export class MapScene extends Phaser.Scene {
     }
     if (nearest !== this.nearPet) {
       this.nearPet = nearest;
-      this.onPetChange?.(nearest?.name ?? null);
+      this.onPetChange?.(nearest?.action ?? null);
     }
     const dt = Math.min(delta, 50) / 1000;
     let moving = false;

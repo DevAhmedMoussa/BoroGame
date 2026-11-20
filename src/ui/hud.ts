@@ -60,10 +60,10 @@ export function mountHud(root: HTMLElement, getScene: () => MapScene | undefined
     setSkipVisible(visible: boolean) {
       skip.hidden = !visible;
     },
-    /** Show "Pet <name>" for the closest pet, or hide the button (null). */
-    setPet(name: string | null) {
-      pet.hidden = !name;
-      if (name) pet.querySelector('.pet-label')!.textContent = `Pet ${name}`;
+    /** Show the closest pet's action (e.g. "Give Zuzu a Treat"), or hide the button (null). */
+    setPet(action: string | null) {
+      pet.hidden = !action;
+      if (action) pet.querySelector('.pet-label')!.textContent = action;
     },
   };
 }
